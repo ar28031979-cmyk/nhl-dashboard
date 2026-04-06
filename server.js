@@ -12,10 +12,17 @@ app.get("/api/team/:abbr", async (req, res) => {
   const abbr = req.params.abbr;
 
   try {
-    const response = await fetch(`https://api-web.nhle.com/v1/club-schedule/${abbr}/now`);
+    // Adjusted endpoint, verifying if data is being returned
+    const response = await fetch(`https://statsapi.web.nhl.com/api/v1/teams/${abbr}/schedule`);
     const data = await response.json();
+
+    if (!data || !data.dates || data.dates.length === 0) {
+      return res.status(404).json({ error: "No data found for this team." });
+    }
+
     res.json(data); // Send the NHL data as JSON response
   } catch (err) {
+    console.error(err); // Log the error
     res.status(500).json({ error: "Failed to fetch NHL data" });
   }
 });
