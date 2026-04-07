@@ -1,14 +1,19 @@
 import express from "express";
 import cors from "cors";
 import fetch from "node-fetch";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
-app.use(express.static("public")); // serve index.html if needed
+app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
 
-// NHL Teams map for 32 teams
+// NHL team ID mapping
 const TEAM_IDS = {
   ANA: 24, BOS: 6, BUF: 7, CGY: 20, CAR: 12, CHI: 16,
   COL: 21, CBJ: 29, DAL: 25, DET: 17, EDM: 22, FLA: 13,
@@ -18,22 +23,30 @@ const TEAM_IDS = {
   WSH: 15, WPG: 52
 };
 
-// Endpoint: /api/team/:abbrev
+async function fetchSchedule(teamId) {
+  const url = `https://statsapi.web.nhl.com/api/v1/schedule?teamId=${teamId}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
 app.get("/api/team/:team", async (req, res) => {
-  const abbrev = req.params.team.toUpperCase();
-  const teamId = TEAM_IDS[abbrev];
-
-  if (!teamId) return res.status(404).json({ error: "Team not found" });
-
   try {
-    const response = await fetch(
-      `https://statsapi.web.nhl.com/api/v1/schedule?teamId=${teamId}`
-    );
-    const data = await response.json();
-    res.json(data);
+    const team = req.params.team.toUpperCase();
+    const teamId = TEAM_IDS[team];
+    if (!teamId) {
+      return res.status(404).json({ error: "Team not found" });
+    }
+
+    const schedule = await fetchSchedule(teamId);
+    return res.json(schedule);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 
-app.listen(PORT, () => console.log(`NHL Dashboard server running on port ${PORT}`));
+// Always serve index for SPA
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
