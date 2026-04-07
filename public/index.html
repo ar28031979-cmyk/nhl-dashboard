@@ -3,129 +3,116 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NHL Tracker</title>
+<title>NHL Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-  /* Reset & root colors */
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  :root{
-    --bg:#eef2f7;--surface:#fff;--surface2:#f5f8fc;
-    --border:#dde4ee;--border2:#c8d3e6;
-    --text:#0d1b2e;--muted:#6b7fa0;--muted2:#9aaac4;
-    --blue:#0057b8;--blue-lt:#e8f0fb;
-    --win:#0a8f5c;--win-bg:#e6f7f1;
-    --loss:#c0392b;--loss-bg:#fcecea;
-    --sn:#d0021b;
-  }
-  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;
-    background-image:radial-gradient(ellipse 70% 30% at 50% 0%,rgba(0,87,184,.07) 0%,transparent 60%),linear-gradient(180deg,#eef2f7 0%,#e8edf5 100%);
-  }
-
-  .header{text-align:center;padding:60px 20px 40px}
-  .header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(70px,10vw,120px);letter-spacing:7px;color:var(--text)}
-  .header h1 span{color:var(--blue)}
-  .header p{color:var(--muted);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin-top:10px}
-
-  .teams-wrap{max-width:1400px;margin:0 auto;padding:0 20px 40px}
-  .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
-
-  .team-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
-  .team-btn img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))}
-  .team-btn span{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted);transition:color .18s}
-  .team-btn.active span,.team-btn:hover span{color:var(--tc,var(--blue))}
-  .team-btn:hover{transform:translateY(-3px);border-color:var(--tc,var(--blue));box-shadow:0 6px 24px -6px rgba(0,87,184,.18)}
-  .team-btn.active{transform:translateY(-3px);border-color:var(--tc,var(--blue));box-shadow:0 6px 28px -6px rgba(0,87,184,.22)}
-
-  .detail-wrap{max-width:1400px;margin:0 auto;padding:0 20px 70px}
-  .detail-panel{background:var(--surface);border:1.5px solid var(--border);border-radius:24px;padding:36px;position:relative;overflow:hidden;animation:fadeUp .3s ease;box-shadow:0 8px 40px -10px rgba(0,60,140,.1);}
-  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+/* Your design CSS */
+body{font-family:'Inter',sans-serif;background:#eef2f7;margin:0;padding:0;}
+.header{text-align:center;padding:40px;}
+.header h1{font-family:'Bebas Neue';font-size:72px;color:#0d1b2e;}
+.header h1 span{color:#0057b8;}
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;padding:20px;max-width:1200px;margin:auto;}
+.team-btn{background:#fff;border-radius:14px;padding:16px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border:1px solid #ddd;transition:0.2s;}
+.team-btn img{width:80px;height:80px;object-fit:contain;}
+.team-btn.active{border:2px solid #0057b8;}
+.team-btn:hover{transform:translateY(-4px);}
+.detail-panel{padding:20px;max-width:900px;margin:20px auto;background:#fff;border:1px solid #ddd;border-radius:16px;}
+.games-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
+.game-card{background:#f5f8fc;padding:16px;border-radius:12px;border:1px solid #ccc;}
+iframe{width:100%;height:240px;border:none;border-radius:10px;margin-top:12px;}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <h1>NHL <span>TRACKER</span></h1>
-  <p>Select a team · Next game · Last result · Highlights</p>
+  <h1>NHL <span>DASHBOARD</span></h1>
+  <p>Select a team to view next game, last result & highlights</p>
 </div>
 
-<div class="teams-wrap">
-  <div class="teams-grid" id="teamsGrid"></div>
-</div>
-
-<div class="detail-wrap">
-  <div id="detailPanel" class="hidden"></div>
-</div>
+<div class="teams-grid" id="teamsGrid"></div>
+<div id="detailPanel"></div>
 
 <script>
+// ---- Team list (32 teams) ----
 const TEAMS = [
-  {a:"ANA",c:"Anaheim",n:"Ducks",color:"#F47A38"},
-  {a:"BOS",c:"Boston",n:"Bruins",color:"#FFB81C"},
-  {a:"BUF",c:"Buffalo",n:"Sabres",color:"#003087"},
-  {a:"CGY",c:"Calgary",n:"Flames",color:"#C8102E"},
-  {a:"CAR",c:"Carolina",n:"Hurricanes",color:"#CC0000"},
-  {a:"CHI",c:"Chicago",n:"Blackhawks",color:"#CF0A2C"},
-  {a:"COL",c:"Colorado",n:"Avalanche",color:"#6F263D"},
-  {a:"CBJ",c:"Columbus",n:"Blue Jackets",color:"#002654"},
-  {a:"DAL",c:"Dallas",n:"Stars",color:"#006847"},
-  {a:"DET",c:"Detroit",n:"Red Wings",color:"#CE1126"},
-  {a:"EDM",c:"Edmonton",n:"Oilers",color:"#FF4C00"},
-  {a:"FLA",c:"Florida",n:"Panthers",color:"#C8102E"},
-  {a:"LAK",c:"Los Angeles",n:"Kings",color:"#898B8E"},
-  {a:"MIN",c:"Minnesota",n:"Wild",color:"#154734"},
-  {a:"MTL",c:"Montréal",n:"Canadiens",color:"#AF1E2D"},
-  {a:"NSH",c:"Nashville",n:"Predators",color:"#FFB81C"},
-  {a:"NJD",c:"New Jersey",n:"Devils",color:"#CE1126"},
-  {a:"NYI",c:"NY Islanders",n:"Islanders",color:"#00539B"},
-  {a:"NYR",c:"NY Rangers",n:"Rangers",color:"#0038A8"},
-  {a:"OTT",c:"Ottawa",n:"Senators",color:"#C8102E"},
-  {a:"PHI",c:"Philadelphia",n:"Flyers",color:"#F74902"},
-  {a:"PIT",c:"Pittsburgh",n:"Penguins",color:"#FCB514"},
-  {a:"SEA",c:"Seattle",n:"Kraken",color:"#007888"},
-  {a:"SJS",c:"San Jose",n:"Sharks",color:"#006D75"},
-  {a:"STL",c:"St. Louis",n:"Blues",color:"#002F87"},
-  {a:"TBL",c:"Tampa Bay",n:"Lightning",color:"#002868"},
-  {a:"TOR",c:"Toronto",n:"Maple Leafs",color:"#003E7E"},
-  {a:"VAN",c:"Vancouver",n:"Canucks",color:"#00843D"},
-  {a:"VGK",c:"Vegas",n:"Golden Knights",color:"#B4975A"},
-  {a:"WSH",c:"Washington",n:"Capitals",color:"#C8102E"},
-  {a:"WPG",c:"Winnipeg",n:"Jets",color:"#041E42"},
+  "ANA","BOS","BUF","CGY","CAR","CHI","COL","CBJ","DAL","DET",
+  "EDM","FLA","LAK","MIN","MTL","NSH","NJD","NYI","NYR","OTT",
+  "PHI","PIT","SEA","SJS","STL","TBL","TOR","UTA","VAN","VGK",
+  "WSH","WPG"
 ];
 
 const logo = a => `https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
+const grid = document.getElementById("teamsGrid");
+const panel = document.getElementById("detailPanel");
 
 // Build grid
-const grid = document.getElementById('teamsGrid');
-TEAMS.forEach(t => {
-  const btn = document.createElement('button');
-  btn.className = 'team-btn';
-  btn.id = 'btn-' + t.a;
-  btn.style.setProperty('--tc', t.color);
-  btn.innerHTML = `<img src="${logo(t.a)}" alt="${t.n}"><span>${t.a}</span>`;
-  btn.addEventListener('click', () => selectTeam(t));
+TEAMS.forEach(a => {
+  const btn = document.createElement("div");
+  btn.className = "team-btn";
+  btn.innerHTML = `<img src="${logo(a)}"><span>${a}</span>`;
+  btn.onclick = () => selectTeam(a, btn);
   grid.appendChild(btn);
 });
 
-let loadToken = 0;
-const panel = document.getElementById('detailPanel');
-
-async function selectTeam(t) {
-  document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('btn-' + t.a).classList.add('active');
-  panel.className = 'detail-panel';
-  panel.innerHTML = `<p>Loading ${t.n}...</p>`;
-  const myToken = ++loadToken;
+let currentToken = 0;
+async function selectTeam(team, btn) {
+  document.querySelectorAll(".team-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  panel.innerHTML = `<p>Loading ${team}...</p>`;
+  const token = ++currentToken;
 
   try {
-    const data = await fetch(`http://localhost:3000/api/team/${t.a}`).then(r=>r.json());
-    if(myToken!==loadToken) return;
-
-    panel.innerHTML = `<h2>${t.c} ${t.n}</h2>
-    <pre>${JSON.stringify(data.games.slice(0,5),null,2)}</pre>
-    <p>🎬 Highlights coming soon</p>`;
-  } catch(e) {
-    panel.innerHTML = `<p style="color:red">Error loading NHL data: ${e.message}</p>`;
+    const res = await fetch(`/api/team/${team}`);
+    const data = await res.json();
+    if (token !== currentToken) return;
+    showTeamData(team, data);
+  } catch (e) {
+    panel.innerHTML = `<p style="color:red">Error loading data</p>`;
   }
 }
+
+function showTeamData(team, data) {
+  const games = data.dates?.flatMap(d=>d.games) || [];
+  const now = new Date();
+  const next = games.find(g => new Date(g.gameDate) >= now);
+  const lastGames = games.filter(g => new Date(g.gameDate) < now);
+  const last = lastGames[lastGames.length - 1];
+
+  let html = `<div class="detail-panel"><h2>${team}</h2><div class="games-grid">`;
+
+  // Next game
+  if (next) {
+    html += `<div class="game-card">
+      <h3>Next Game</h3>
+      <p>${next.teams.away.team.abbreviation} @ ${next.teams.home.team.abbreviation}<br>${new Date(next.gameDate).toLocaleString()}</p>
+    </div>`;
+  } else {
+    html += `<div class="game-card"><h3>Next Game</h3><p>No scheduled game</p></div>`;
+  }
+
+  // Last game
+  if (last) {
+    html += `<div class="game-card">
+      <h3>Last Game</h3>
+      <p>${last.teams.away.team.abbreviation} ${last.teams.away.score} - ${last.teams.home.score} ${last.teams.home.team.abbreviation}</p>
+      ${getYouTubeHighlight(last)}
+    </div>`;
+  } else {
+    html += `<div class="game-card"><h3>Last Game</h3><p>No recent game data</p></div>`;
+  }
+
+  html += "</div></div>";
+  panel.innerHTML = html;
+}
+
+function getYouTubeHighlight(game) {
+  const home = game.teams.home.team.abbreviation;
+  const away = game.teams.away.team.abbreviation;
+  const query = `${away} vs ${home} NHL highlights`;
+  return `<iframe src="https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}" allowfullscreen></iframe>`;
+}
 </script>
+
 </body>
 </html>
