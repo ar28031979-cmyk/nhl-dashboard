@@ -151,19 +151,9 @@ async function loadTeam(team){
 }
 
 // ===== VIDEO EMBED =====
-function getVideo(game){
-  if(!game) return "";
-
-  const home = game.homeTeam.abbrev;
-  const away = game.awayTeam.abbrev;
-
-  const query = `${away} ${home} NHL highlights`;
-
-  return `
-    <iframe src="https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}" allowfullscreen></iframe>
-  `;
+  function getVideo(game){
+  return game?.youtube ? `<iframe src="${game.youtube}" allowfullscreen></iframe>` : "";
 }
-
 // ===== RENDER =====
 function render(last, next){
 
