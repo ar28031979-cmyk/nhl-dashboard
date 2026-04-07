@@ -3,13 +3,42 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NHL Tracker Pro</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<title>NHL Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <style>
-/* Paste your previous styles here */
-body{font-family:'Inter',sans-serif;background:#eef2f7;margin:0;padding:0}
-/* … include your full CSS for header, teams, detail panel, loader, badges etc. … */
+  /* Reset & root colors */
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef2f7;--surface:#fff;--surface2:#f5f8fc;
+    --border:#dde4ee;--border2:#c8d3e6;
+    --text:#0d1b2e;--muted:#6b7fa0;--muted2:#9aaac4;
+    --blue:#0057b8;--blue-lt:#e8f0fb;
+    --win:#0a8f5c;--win-bg:#e6f7f1;
+    --loss:#c0392b;--loss-bg:#fcecea;
+    --sn:#d0021b;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;
+    background-image:radial-gradient(ellipse 70% 30% at 50% 0%,rgba(0,87,184,.07) 0%,transparent 60%),linear-gradient(180deg,#eef2f7 0%,#e8edf5 100%);
+  }
+
+  .header{text-align:center;padding:60px 20px 40px}
+  .header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(70px,10vw,120px);letter-spacing:7px;color:var(--text)}
+  .header h1 span{color:var(--blue)}
+  .header p{color:var(--muted);font-size:13px;letter-spacing:3px;text-transform:uppercase;margin-top:10px}
+
+  .teams-wrap{max-width:1400px;margin:0 auto;padding:0 20px 40px}
+  .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+
+  .team-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:16px;padding:24px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+  .team-btn img{width:80px;height:80px;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.15))}
+  .team-btn span{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted);transition:color .18s}
+  .team-btn.active span,.team-btn:hover span{color:var(--tc,var(--blue))}
+  .team-btn:hover{transform:translateY(-3px);border-color:var(--tc,var(--blue));box-shadow:0 6px 24px -6px rgba(0,87,184,.18)}
+  .team-btn.active{transform:translateY(-3px);border-color:var(--tc,var(--blue));box-shadow:0 6px 28px -6px rgba(0,87,184,.22)}
+
+  .detail-wrap{max-width:1400px;margin:0 auto;padding:0 20px 70px}
+  .detail-panel{background:var(--surface);border:1.5px solid var(--border);border-radius:24px;padding:36px;position:relative;overflow:hidden;animation:fadeUp .3s ease;box-shadow:0 8px 40px -10px rgba(0,60,140,.1);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -29,112 +58,73 @@ body{font-family:'Inter',sans-serif;background:#eef2f7;margin:0;padding:0}
 
 <script>
 const TEAMS = [
-  {a:"ANA",n:"Ducks",color:"#F47A38"},
-  {a:"BOS",n:"Bruins",color:"#FFB81C"},
-  {a:"BUF",n:"Sabres",color:"#003087"},
-  {a:"CGY",n:"Flames",color:"#C8102E"},
-  {a:"CAR",n:"Hurricanes",color:"#CC0000"},
-  {a:"CHI",n:"Blackhawks",color:"#CF0A2C"},
-  {a:"COL",n:"Avalanche",color:"#6F263D"},
-  {a:"CBJ",n:"Blue Jackets",color:"#002654"},
-  {a:"DAL",n:"Stars",color:"#006847"},
-  {a:"DET",n:"Red Wings",color:"#CE1126"},
-  {a:"EDM",n:"Oilers",color:"#FF4C00"},
-  {a:"FLA",n:"Panthers",color:"#C8102E"},
-  {a:"LAK",n:"Kings",color:"#898B8E"},
-  {a:"MIN",n:"Wild",color:"#154734"},
-  {a:"MTL",n:"Canadiens",color:"#AF1E2D"},
-  {a:"NSH",n:"Predators",color:"#FFB81C"},
-  {a:"NJD",n:"Devils",color:"#CE1126"},
-  {a:"NYI",n:"Islanders",color:"#FC4C02"},
-  {a:"NYR",n:"Rangers",color:"#0038A8"},
-  {a:"OTT",n:"Senators",color:"#C8102E"},
-  {a:"PHI",n:"Flyers",color:"#F74902"},
-  {a:"PIT",n:"Penguins",color:"#FCB514"},
-  {a:"SEA",n:"Kraken",color:"#007888"},
-  {a:"SJS",n:"Sharks",color:"#006D75"},
-  {a:"STL",n:"Blues",color:"#002F87"},
-  {a:"TBL",n:"Lightning",color:"#002868"},
-  {a:"TOR",n:"Maple Leafs",color:"#003E7E"},
-  {a:"VAN",n:"Canucks",color:"#00843D"},
-  {a:"VGK",n:"Golden Knights",color:"#B4975A"},
-  {a:"WSH",n:"Capitals",color:"#C8102E"},
-  {a:"WPG",n:"Jets",color:"#041E42"}
+  {a:"ANA",c:"Anaheim",n:"Ducks",color:"#F47A38"},
+  {a:"BOS",c:"Boston",n:"Bruins",color:"#FFB81C"},
+  {a:"BUF",c:"Buffalo",n:"Sabres",color:"#003087"},
+  {a:"CGY",c:"Calgary",n:"Flames",color:"#C8102E"},
+  {a:"CAR",c:"Carolina",n:"Hurricanes",color:"#CC0000"},
+  {a:"CHI",c:"Chicago",n:"Blackhawks",color:"#CF0A2C"},
+  {a:"COL",c:"Colorado",n:"Avalanche",color:"#6F263D"},
+  {a:"CBJ",c:"Columbus",n:"Blue Jackets",color:"#002654"},
+  {a:"DAL",c:"Dallas",n:"Stars",color:"#006847"},
+  {a:"DET",c:"Detroit",n:"Red Wings",color:"#CE1126"},
+  {a:"EDM",c:"Edmonton",n:"Oilers",color:"#FF4C00"},
+  {a:"FLA",c:"Florida",n:"Panthers",color:"#C8102E"},
+  {a:"LAK",c:"Los Angeles",n:"Kings",color:"#898B8E"},
+  {a:"MIN",c:"Minnesota",n:"Wild",color:"#154734"},
+  {a:"MTL",c:"Montréal",n:"Canadiens",color:"#AF1E2D"},
+  {a:"NSH",c:"Nashville",n:"Predators",color:"#FFB81C"},
+  {a:"NJD",c:"New Jersey",n:"Devils",color:"#CE1126"},
+  {a:"NYI",c:"NY Islanders",n:"Islanders",color:"#00539B"},
+  {a:"NYR",c:"NY Rangers",n:"Rangers",color:"#0038A8"},
+  {a:"OTT",c:"Ottawa",n:"Senators",color:"#C8102E"},
+  {a:"PHI",c:"Philadelphia",n:"Flyers",color:"#F74902"},
+  {a:"PIT",c:"Pittsburgh",n:"Penguins",color:"#FCB514"},
+  {a:"SEA",c:"Seattle",n:"Kraken",color:"#007888"},
+  {a:"SJS",c:"San Jose",n:"Sharks",color:"#006D75"},
+  {a:"STL",c:"St. Louis",n:"Blues",color:"#002F87"},
+  {a:"TBL",c:"Tampa Bay",n:"Lightning",color:"#002868"},
+  {a:"TOR",c:"Toronto",n:"Maple Leafs",color:"#003E7E"},
+  {a:"VAN",c:"Vancouver",n:"Canucks",color:"#00843D"},
+  {a:"VGK",c:"Vegas",n:"Golden Knights",color:"#B4975A"},
+  {a:"WSH",c:"Washington",n:"Capitals",color:"#C8102E"},
+  {a:"WPG",c:"Winnipeg",n:"Jets",color:"#041E42"},
 ];
 
 const logo = a => `https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
 
+// Build grid
 const grid = document.getElementById('teamsGrid');
-const panel = document.getElementById('detailPanel');
-
-TEAMS.forEach(t=>{
-  const btn=document.createElement('button');
-  btn.className='team-btn';
+TEAMS.forEach(t => {
+  const btn = document.createElement('button');
+  btn.className = 'team-btn';
+  btn.id = 'btn-' + t.a;
   btn.style.setProperty('--tc', t.color);
-  btn.innerHTML=`<img src="${logo(t.a)}"><span>${t.a}</span>`;
-  btn.addEventListener('click',()=>selectTeam(t));
+  btn.innerHTML = `<img src="${logo(t.a)}" alt="${t.n}"><span>${t.a}</span>`;
+  btn.addEventListener('click', () => selectTeam(t));
   grid.appendChild(btn);
 });
 
-let loadToken=0;
+let loadToken = 0;
+const panel = document.getElementById('detailPanel');
 
-async function selectTeam(t){
+async function selectTeam(t) {
   document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('active'));
-  event.target.classList.add('active');
-  const token = ++loadToken;
-  panel.className='detail-panel';
-  panel.innerHTML='<p>Loading...</p>';
+  document.getElementById('btn-' + t.a).classList.add('active');
+  panel.className = 'detail-panel';
+  panel.innerHTML = `<p>Loading ${t.n}...</p>`;
+  const myToken = ++loadToken;
 
-  try{
-    const res = await fetch(`/api/team/${t.a}`);
-    if(!res.ok) throw new Error('Failed to fetch');
-    const data = await res.json();
-    if(token!==loadToken) return;
-    renderPanel(t,data.games);
-  }catch(e){
-    panel.innerHTML=`<p>Error loading NHL data: ${e.message}</p>`;
+  try {
+    const data = await fetch(`http://localhost:3000/api/team/${t.a}`).then(r=>r.json());
+    if(myToken!==loadToken) return;
+
+    panel.innerHTML = `<h2>${t.c} ${t.n}</h2>
+    <pre>${JSON.stringify(data.games.slice(0,5),null,2)}</pre>
+    <p>🎬 Highlights coming soon</p>`;
+  } catch(e) {
+    panel.innerHTML = `<p style="color:red">Error loading NHL data: ${e.message}</p>`;
   }
-}
-
-function renderPanel(team,games){
-  const now = new Date();
-  const upcoming = games.find(g=>new Date(g.gameDate)>now);
-  const last = [...games].reverse().find(g=>new Date(g.gameDate)<=now);
-
-  panel.innerHTML=`
-    <div class="detail-head">
-      <img src="${logo(team.a)}" alt="${team.n}">
-      <div class="team-name">
-        <h2>${team.n}</h2><p>NHL · ${team.a}</p>
-      </div>
-    </div>
-    <div class="games-grid">
-      <div class="game-card">
-        <div>Next Game</div>
-        ${upcoming ? nextHTML(upcoming,team.a) : '<p>No upcoming games.</p>'}
-      </div>
-      <div class="game-card">
-        <div>Last Game</div>
-        ${last ? lastHTML(last,team.a) : '<p>No recent games.</p>'}
-      </div>
-    </div>
-  `;
-}
-
-function nextHTML(g,teamAbbrev){
-  const opp = g.teams.home.team.abbreviation===teamAbbrev?g.teams.away.team:g.teams.home.team;
-  const isHome = g.teams.home.team.abbreviation===teamAbbrev;
-  return `<div>${isHome?'Home':'Away'} VS ${opp.abbreviation} <br>${new Date(g.gameDate).toLocaleString()}</div>`;
-}
-
-function lastHTML(g,teamAbbrev){
-  const opp = g.teams.home.team.abbreviation===teamAbbrev?g.teams.away.team:g.teams.home.team;
-  const isHome = g.teams.home.team.abbreviation===teamAbbrev;
-  return `
-    <div>${isHome?'Home':'Away'} VS ${opp.abbreviation} <br>
-    Score: ${g.teams.home.score}–${g.teams.away.score}</div>
-    <iframe width="320" height="180" src="${g.youtube}" allowfullscreen></iframe>
-  `;
 }
 </script>
 </body>
