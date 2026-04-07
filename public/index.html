@@ -1,89 +1,151 @@
-<!-- index.html -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>NHL Dashboard</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0b1c2c;
-      color: white;
-      text-align: center;
-    }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NHL Tracker</title>
 
-    .teams {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-      gap: 10px;
-      padding: 15px;
-    }
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 
-    .team {
-      background: #12263a;
-      padding: 10px;
-      border-radius: 10px;
-      cursor: pointer;
-    }
+<style>
+/* ===== YOUR ORIGINAL DESIGN (UNCHANGED) ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eef2f7;--surface:#fff;--surface2:#f5f8fc;
+  --border:#dde4ee;--border2:#c8d3e6;
+  --text:#0d1b2e;--muted:#6b7fa0;--muted2:#9aaac4;
+  --blue:#0057b8;--blue-lt:#e8f0fb;
+  --win:#0a8f5c;--win-bg:#e6f7f1;
+  --loss:#c0392b;--loss-bg:#fcecea;
+}
+body{background:var(--bg);font-family:'Inter',sans-serif}
 
-    .team:hover {
-      background: #1f3b57;
-    }
+.header{text-align:center;padding:40px}
+.header h1{font-family:'Bebas Neue';font-size:64px;letter-spacing:6px}
 
-    iframe {
-      width: 90%;
-      height: 400px;
-      border: none;
-      border-radius: 10px;
-      margin-top: 20px;
-    }
-  </style>
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;padding:20px}
+.team-btn{background:#fff;border-radius:12px;padding:10px;text-align:center;cursor:pointer;border:1px solid #ddd}
+.team-btn img{width:70px;height:70px;object-fit:contain}
+.team-btn.active{border:2px solid #0057b8}
+
+.detail-panel{padding:20px}
+.games-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.game-card{background:#fff;padding:20px;border-radius:12px}
+
+.result-w{color:green}
+.result-l{color:red}
+
+iframe{border:none;border-radius:10px}
+</style>
 </head>
+
 <body>
-  <header>NHL Dashboard 🏒</header>
-  <div class="teams" id="teams"></div>
-  <h2 id="teamName">Select a team</h2>
-  <div id="teamInfo"></div>
-  <iframe id="video"></iframe>
 
-  <script>
-    const teams = ["ANA", "BOS", "BUF", "CAR", "CHI", "COL", "DAL", "DET", "EDM", "FLA", "LAK", "MIN", "MTL", "NJD", "NYR", "NYI", "OTT", "PHI", "PIT", "SEA", "SJS", "STL", "TBL", "TOR", "VAN", "VGK", "WSH", "WPG"];
+<div class="header">
+  <h1>NHL TRACKER</h1>
+</div>
 
-    const teamsDiv = document.getElementById("teams");
+<div class="teams-grid" id="teamsGrid"></div>
 
-    teams.forEach(abbr => {
-      const el = document.createElement("div");
-      el.className = "team";
-      el.innerHTML = abbr;
-      el.onclick = () => loadTeam(abbr);
-      teamsDiv.appendChild(el);
-    });
+<div id="detailPanel"></div>
 
-    async function loadTeam(abbr) {
-      document.getElementById("teamName").innerText = abbr;
-      document.getElementById("teamInfo").innerText = "Loading...";
+<script>
+// ===== TEAMS =====
+const TEAMS = [
+  {a:"TOR",c:"Toronto",n:"Maple Leafs"},
+  {a:"NYR",c:"New York",n:"Rangers"},
+  {a:"BOS",c:"Boston",n:"Bruins"},
+  {a:"VGK",c:"Vegas",n:"Golden Knights"},
+  {a:"COL",c:"Colorado",n:"Avalanche"},
+];
 
-      try {
-        const res = await fetch(`/api/team/${abbr}`);
-        const data = await res.json();
-        
-        if (data.games && data.games.length > 0) {
-          const lastGame = data.games.find(g => g.gameState === "OFF");
-          document.getElementById("teamInfo").innerText = `
-            Last Game: ${lastGame.awayTeam.abbrev} ${lastGame.awayTeam.score} - ${lastGame.homeTeam.score} ${lastGame.homeTeam.abbrev}
-          `;
-        } else {
-          document.getElementById("teamInfo").innerText = "No recent games";
-        }
+const logo = a => `https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
 
-        // YouTube search for highlights
-        const query = encodeURIComponent(`${abbr} NHL highlights Sportsnet`);
-        document.getElementById("video").src = `https://www.youtube.com/embed?listType=search&list=${query}`;
-      } catch (err) {
-        document.getElementById("teamInfo").innerText = "Error loading data";
-      }
-    }
-  </script>
+// ===== BUILD UI =====
+const grid = document.getElementById('teamsGrid');
+
+TEAMS.forEach(t=>{
+  const btn=document.createElement('div');
+  btn.className="team-btn";
+  btn.innerHTML=`<img src="${logo(t.a)}"><div>${t.a}</div>`;
+  btn.onclick=()=>selectTeam(t,btn);
+  grid.appendChild(btn);
+});
+
+const panel = document.getElementById('detailPanel');
+
+function selectTeam(team,btn){
+  document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+
+  panel.innerHTML="Loading...";
+  loadTeam(team);
+}
+
+// ===== FETCH DATA =====
+async function loadTeam(t){
+  try{
+    const res = await fetch(`https://api-web.nhle.com/v1/club-schedule/${t.a}/week/now`);
+    const data = await res.json();
+
+    const games = data.games || [];
+
+    const last = games.find(g=>g.gameState==="OFF");
+    const next = games.find(g=>g.gameState==="FUT" || g.gameState==="LIVE");
+
+    render(t,last,next);
+
+  }catch(e){
+    panel.innerHTML="Error loading data";
+  }
+}
+
+// ===== VIDEO EMBED (FIXED) =====
+function getVideoEmbed(game){
+  if(!game) return "";
+
+  const home = game.homeTeam.abbrev;
+  const away = game.awayTeam.abbrev;
+
+  const query = `${away} vs ${home} NHL highlights`;
+
+  return `
+  <iframe 
+    width="100%" 
+    height="220"
+    src="https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(query)}"
+    allowfullscreen>
+  </iframe>`;
+}
+
+// ===== RENDER =====
+function render(t,last,next){
+
+  const lastHTML = last ? `
+    <div>
+      <h3>Last Game</h3>
+      <p>${last.awayTeam.abbrev} ${last.awayTeam.score} - ${last.homeTeam.score} ${last.homeTeam.abbrev}</p>
+      ${getVideoEmbed(last)}
+    </div>
+  ` : "<p>No last game</p>";
+
+  const nextHTML = next ? `
+    <div>
+      <h3>Next Game</h3>
+      <p>${next.awayTeam.abbrev} vs ${next.homeTeam.abbrev}</p>
+      <p>${new Date(next.startTimeUTC).toLocaleString()}</p>
+    </div>
+  ` : "<p>No upcoming game</p>";
+
+  panel.innerHTML = `
+    <div class="games-grid">
+      <div class="game-card">${lastHTML}</div>
+      <div class="game-card">${nextHTML}</div>
+    </div>
+  `;
+}
+</script>
+
 </body>
 </html>
