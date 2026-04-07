@@ -1,33 +1,28 @@
-// server.js
+const express = require('express');
+const fetch = require('node-fetch');
+const path = require('path');
 
-const express = require("express");
-const fetch = require("node-fetch");
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Serve static files from the "public" folder
-app.use(express.static("public"));
+// serve frontend
+app.use(express.static(path.join(__dirname, 'public')));
 
-// API route to get NHL data for a team
-app.get("/api/team/:abbr", async (req, res) => {
-  const abbr = req.params.abbr;
-
+// API route
+app.get('/api/team/:team', async (req, res) => {
   try {
-    // Adjusted endpoint, verifying if data is being returned
-    const response = await fetch(`https://statsapi.web.nhl.com/api/v1/teams/${abbr}/schedule`);
+    const team = req.params.team;
+
+    const response = await fetch(`https://api-web.nhle.com/v1/club-schedule/${team}/week/now`);
     const data = await response.json();
 
-    if (!data || !data.dates || data.dates.length === 0) {
-      return res.status(404).json({ error: "No data found for this team." });
-    }
+    res.json(data);
 
-    res.json(data); // Send the NHL data as JSON response
   } catch (err) {
-    console.error(err); // Log the error
-    res.status(500).json({ error: "Failed to fetch NHL data" });
+    res.status(500).json({ error: 'Failed to fetch NHL data' });
   }
 });
 
-// Start the server
-app.listen(3000, () => {
-  console.log("Server running on http://localhost:3000");
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
 });
