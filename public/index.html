@@ -3,183 +3,139 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NHL Tracker</title>
-
+<title>NHL Tracker Pro</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-
-body{
-  background:#eef2f7;
-  font-family:'Inter',sans-serif;
-}
-
-.header{
-  text-align:center;
-  padding:40px;
-}
-.header h1{
-  font-family:'Bebas Neue';
-  font-size:80px;
-  letter-spacing:6px;
-}
-
-.teams-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
-  gap:14px;
-  padding:20px;
-  max-width:1200px;
-  margin:auto;
-}
-
-.team-btn{
-  background:#fff;
-  border-radius:16px;
-  padding:16px;
-  text-align:center;
-  cursor:pointer;
-  border:1px solid #ddd;
-  transition:.2s;
-}
-
-.team-btn img{
-  width:90px;
-  height:90px;
-  object-fit:contain;
-}
-
-.team-btn:hover{transform:translateY(-4px)}
-.team-btn.active{border:2px solid #0057b8}
-
-.detail-panel{
-  padding:20px;
-  max-width:1100px;
-  margin:auto;
-}
-
-.games-grid{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:20px;
-}
-
-.game-card{
-  background:#fff;
-  padding:20px;
-  border-radius:16px;
-}
-
-.result-w{color:#0a8f5c;font-weight:600}
-.result-l{color:#c0392b;font-weight:600}
-
-iframe{
-  width:100%;
-  height:240px;
-  border:none;
-  border-radius:12px;
-  margin-top:12px;
-}
+/* Paste your previous styles here */
+body{font-family:'Inter',sans-serif;background:#eef2f7;margin:0;padding:0}
+/* … include your full CSS for header, teams, detail panel, loader, badges etc. … */
 </style>
 </head>
-
 <body>
 
 <div class="header">
-  <h1>NHL TRACKER</h1>
+  <h1>NHL <span>TRACKER</span></h1>
+  <p>Select a team · Next game · Last result · Highlights</p>
 </div>
 
-<div class="teams-grid" id="teamsGrid"></div>
+<div class="teams-wrap">
+  <div class="teams-grid" id="teamsGrid"></div>
+</div>
 
-<div class="detail-panel" id="panel"></div>
+<div class="detail-wrap">
+  <div id="detailPanel" class="hidden"></div>
+</div>
 
 <script>
-
-// ===== TEAMS =====
 const TEAMS = [
-  "ANA","BOS","BUF","CGY","CAR","CHI","COL","DAL","DET","EDM",
-  "FLA","LAK","MIN","MTL","NSH","NJD","NYI","NYR","OTT","PHI",
-  "PIT","SEA","SJS","STL","TBL","TOR","VAN","VGK","WSH","WPG"
+  {a:"ANA",n:"Ducks",color:"#F47A38"},
+  {a:"BOS",n:"Bruins",color:"#FFB81C"},
+  {a:"BUF",n:"Sabres",color:"#003087"},
+  {a:"CGY",n:"Flames",color:"#C8102E"},
+  {a:"CAR",n:"Hurricanes",color:"#CC0000"},
+  {a:"CHI",n:"Blackhawks",color:"#CF0A2C"},
+  {a:"COL",n:"Avalanche",color:"#6F263D"},
+  {a:"CBJ",n:"Blue Jackets",color:"#002654"},
+  {a:"DAL",n:"Stars",color:"#006847"},
+  {a:"DET",n:"Red Wings",color:"#CE1126"},
+  {a:"EDM",n:"Oilers",color:"#FF4C00"},
+  {a:"FLA",n:"Panthers",color:"#C8102E"},
+  {a:"LAK",n:"Kings",color:"#898B8E"},
+  {a:"MIN",n:"Wild",color:"#154734"},
+  {a:"MTL",n:"Canadiens",color:"#AF1E2D"},
+  {a:"NSH",n:"Predators",color:"#FFB81C"},
+  {a:"NJD",n:"Devils",color:"#CE1126"},
+  {a:"NYI",n:"Islanders",color:"#FC4C02"},
+  {a:"NYR",n:"Rangers",color:"#0038A8"},
+  {a:"OTT",n:"Senators",color:"#C8102E"},
+  {a:"PHI",n:"Flyers",color:"#F74902"},
+  {a:"PIT",n:"Penguins",color:"#FCB514"},
+  {a:"SEA",n:"Kraken",color:"#007888"},
+  {a:"SJS",n:"Sharks",color:"#006D75"},
+  {a:"STL",n:"Blues",color:"#002F87"},
+  {a:"TBL",n:"Lightning",color:"#002868"},
+  {a:"TOR",n:"Maple Leafs",color:"#003E7E"},
+  {a:"VAN",n:"Canucks",color:"#00843D"},
+  {a:"VGK",n:"Golden Knights",color:"#B4975A"},
+  {a:"WSH",n:"Capitals",color:"#C8102E"},
+  {a:"WPG",n:"Jets",color:"#041E42"}
 ];
 
 const logo = a => `https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
 
 const grid = document.getElementById('teamsGrid');
-const panel = document.getElementById('panel');
+const panel = document.getElementById('detailPanel');
 
-// ===== BUILD TEAM GRID =====
-TEAMS.forEach(a=>{
-  const btn = document.createElement('div');
-  btn.className = "team-btn";
-  btn.innerHTML = `<img src="${logo(a)}"><div>${a}</div>`;
-  btn.onclick = () => selectTeam(a, btn);
+TEAMS.forEach(t=>{
+  const btn=document.createElement('button');
+  btn.className='team-btn';
+  btn.style.setProperty('--tc', t.color);
+  btn.innerHTML=`<img src="${logo(t.a)}"><span>${t.a}</span>`;
+  btn.addEventListener('click',()=>selectTeam(t));
   grid.appendChild(btn);
 });
 
-function selectTeam(team, btn){
+let loadToken=0;
+
+async function selectTeam(t){
   document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  event.target.classList.add('active');
+  const token = ++loadToken;
+  panel.className='detail-panel';
+  panel.innerHTML='<p>Loading...</p>';
 
-  panel.innerHTML = "Loading...";
-  loadTeam(team);
-}
-
-// ===== FETCH FROM YOUR BACKEND (NO CORS ISSUES) =====
-async function loadTeam(team){
   try{
-    const res = await fetch(`/api/team/${team}`);
+    const res = await fetch(`/api/team/${t.a}`);
+    if(!res.ok) throw new Error('Failed to fetch');
     const data = await res.json();
-
-    const games = data.games || [];
-
-    const last = games
-      .filter(g => ["OFF","FINAL"].includes(g.gameState))
-      .sort((a,b)=>new Date(b.startTimeUTC)-new Date(a.startTimeUTC))[0];
-
-    const next = games
-      .filter(g => ["FUT","PRE","LIVE","CRIT"].includes(g.gameState))
-      .sort((a,b)=>new Date(a.startTimeUTC)-new Date(b.startTimeUTC))[0];
-
-    render(last, next);
-
+    if(token!==loadToken) return;
+    renderPanel(t,data.games);
   }catch(e){
-    console.error(e);
-    panel.innerHTML = "<p style='color:red'>Error loading NHL data</p>";
+    panel.innerHTML=`<p>Error loading NHL data: ${e.message}</p>`;
   }
 }
 
-// ===== VIDEO EMBED =====
-  function getVideo(game){
-  return game?.youtube ? `<iframe src="${game.youtube}" allowfullscreen></iframe>` : "";
-}
-// ===== RENDER =====
-function render(last, next){
+function renderPanel(team,games){
+  const now = new Date();
+  const upcoming = games.find(g=>new Date(g.gameDate)>now);
+  const last = [...games].reverse().find(g=>new Date(g.gameDate)<=now);
 
-  const lastHTML = last ? `
-    <h3>Last Game</h3>
-    <p class="${(last.homeTeam.score > last.awayTeam.score) ? 'result-w':'result-l'}">
-      ${last.awayTeam.abbrev} ${last.awayTeam.score} - ${last.homeTeam.score} ${last.homeTeam.abbrev}
-    </p>
-    ${getVideo(last)}
-  ` : "<p>No recent game</p>";
-
-  const nextHTML = next ? `
-    <h3>Next Game</h3>
-    <p>${next.awayTeam.abbrev} vs ${next.homeTeam.abbrev}</p>
-    <p>${new Date(next.startTimeUTC).toLocaleString()}</p>
-  ` : "<p>No upcoming game</p>";
-
-  panel.innerHTML = `
+  panel.innerHTML=`
+    <div class="detail-head">
+      <img src="${logo(team.a)}" alt="${team.n}">
+      <div class="team-name">
+        <h2>${team.n}</h2><p>NHL · ${team.a}</p>
+      </div>
+    </div>
     <div class="games-grid">
-      <div class="game-card">${lastHTML}</div>
-      <div class="game-card">${nextHTML}</div>
+      <div class="game-card">
+        <div>Next Game</div>
+        ${upcoming ? nextHTML(upcoming,team.a) : '<p>No upcoming games.</p>'}
+      </div>
+      <div class="game-card">
+        <div>Last Game</div>
+        ${last ? lastHTML(last,team.a) : '<p>No recent games.</p>'}
+      </div>
     </div>
   `;
 }
 
-</script>
+function nextHTML(g,teamAbbrev){
+  const opp = g.teams.home.team.abbreviation===teamAbbrev?g.teams.away.team:g.teams.home.team;
+  const isHome = g.teams.home.team.abbreviation===teamAbbrev;
+  return `<div>${isHome?'Home':'Away'} VS ${opp.abbreviation} <br>${new Date(g.gameDate).toLocaleString()}</div>`;
+}
 
+function lastHTML(g,teamAbbrev){
+  const opp = g.teams.home.team.abbreviation===teamAbbrev?g.teams.away.team:g.teams.home.team;
+  const isHome = g.teams.home.team.abbreviation===teamAbbrev;
+  return `
+    <div>${isHome?'Home':'Away'} VS ${opp.abbreviation} <br>
+    Score: ${g.teams.home.score}–${g.teams.away.score}</div>
+    <iframe width="320" height="180" src="${g.youtube}" allowfullscreen></iframe>
+  `;
+}
+</script>
 </body>
 </html>
