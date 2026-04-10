@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NHL Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* ── Metallic gray palette ── */
+  --bg:#28292c;
+  --surface:#35383d;
+  --surface2:#2e3135;
+  --surface3:#292b2f;
+  --border:#46494f;
+  --border2:#585c65;
+  --text:#e6eaf0;
+  --muted:#9097a8;
+  --muted2:#62697a;
+  --blue:#6aabdf;
+  --blue-lt:rgba(106,171,223,.15);
+  --blue-glow:rgba(106,171,223,.3);
+  --win:#2ecc71;
+  --win-bg:rgba(46,204,113,.12);
+  --win-border:rgba(46,204,113,.28);
+  --loss:#e74c3c;
+  --loss-bg:rgba(231,76,60,.12);
+  --loss-border:rgba(231,76,60,.28);
+  --yt:#ff3333;
+  --yt-bg:rgba(255,50,50,.1);
+  --yt-border:rgba(255,50,50,.28);
+  --gold:#f0b429;
+  --radius:16px;
+  --shadow:0 2px 14px rgba(0,0,0,.35);
+  --shadow-md:0 8px 32px rgba(0,0,0,.45);
+}
+
+html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
+
+/* ── METALLIC BACKGROUND — mimics brushed hockey puck metal ── */
+body{
+  background:
+    radial-gradient(ellipse 150% 80% at 50% -5%, rgba(160,165,175,.1) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, #32353a 0%, #1e2023 100%);
+  background-attachment:fixed;
+}
+/* subtle horizontal brushed-metal lines */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(
+    180deg,
+    rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px,
+    transparent 1px, transparent 3px
+  );
+}
+/* vignette darkening the edges like a puck */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 90% 90% at 50% 50%,
+    transparent 45%, rgba(0,0,0,.5) 100%);
+}
+
+/* ── STICKY TOP — header + strip as one unit, zero gap ── */
+.top-bar{position:sticky;top:0;z-index:100;background:var(--surface);
+  box-shadow:0 2px 10px rgba(15,28,46,.09);}
+/* ── HEADER — compact for mobile ── */
+.header{
+  text-align:center;padding:14px 16px 12px;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.header-title{display:flex;align-items:center;justify-content:center;gap:12px}
+.nhl-logo{width:56px;height:56px;flex-shrink:0;border-radius:50%;overflow:hidden;
+  box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.1)}
+.header h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(36px,8vw,56px);
+  letter-spacing:6px;line-height:1;color:var(--text);
+}
+.header h1 span{color:var(--blue)}
+.header p{color:var(--muted);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;margin-top:5px}
+
+/* ── TEAM STRIP — horizontal scroll ── */
+.teams-wrap{
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+}
+.strip-label{
+  font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted2);padding:8px 16px 0;font-weight:600;
+}
+.teams-strip{
+  display:flex;flex-direction:row;
+  overflow-x:auto;overflow-y:hidden;
+  gap:6px;padding:8px 16px 10px;
+  scroll-behavior:smooth;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; /* Firefox */
+}
+.teams-strip::-webkit-scrollbar{display:none}
+
+/* Fade edges to hint scrollability */
+.teams-wrap{position:relative}
+.teams-wrap::before,.teams-wrap::after{
+  content:'';position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:2;
+}
+.teams-wrap::before{left:0;background:linear-gradient(to right,var(--surface),transparent)}
+.teams-wrap::after{right:0;background:linear-gradient(to left,var(--surface),transparent)}
+
+.team-btn{
+  flex:0 0 auto;
+  background:var(--surface2);
+  border:1.5px solid var(--border);
+  border-radius:12px;
+  padding:8px 10px 6px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  cursor:pointer;
+  transition:all .16s ease;
+  position:relative;overflow:hidden;
+  min-width:68px;
+  -webkit-tap-highlight-color:transparent;
+}
+.team-btn::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;
+  background:var(--tc,var(--blue));transform:scaleX(0);
+  transition:transform .18s;transform-origin:center;
+  border-radius:2px 2px 0 0;
+}
+.team-btn:active{transform:scale(.94)}
+.team-btn.active{
+  background:var(--blue-lt);
+  border-color:var(--tc,var(--blue));
+  box-shadow:0 2px 10px -2px var(--blue-glow);
+}
+.team-btn.active::after{transform:scaleX(1);background:var(--tc,var(--blue))}
+.team-btn img{
+  width:44px;height:44px;object-fit:contain;
+  transition:transform .16s;
+}
+.team-btn.active img{transform:scale(1.08)}
+.team-btn span{
+  font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1.5px;
+  color:var(--muted);transition:color .16s;white-space:nowrap;
+}
+.team-btn.active span{color:var(--tc,var(--blue))}
+
+/* ── DETAIL AREA ── */
+.detail-wrap{padding:14px 12px 60px;max-width:680px;margin:0 auto}
+
+.detail-panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:20px 16px;
+  position:relative;overflow:hidden;
+  animation:fadeUp .25s ease;
+  box-shadow:var(--shadow-md);
+}
+.detail-panel::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--tc,var(--blue)) 0%,transparent 70%);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* Team header inside panel */
+.detail-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.detail-head img{width:60px;height:60px;object-fit:contain;flex-shrink:0}
+.detail-head .ti h2{
+  font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2.5px;line-height:1.05;color:var(--text)
+}
+.detail-head .ti p{color:var(--muted);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;margin-top:5px;font-weight:500}
+.detail-head .ti p span{
+  color:var(--tc,var(--blue));background:var(--blue-lt);
+  padding:1px 7px;border-radius:4px;border:1px solid var(--blue-glow);
+  margin-left:5px;font-size:9px;
+}
+
+/* ── GAME CARDS — always stacked ── */
+.games-grid{display:flex;flex-direction:column;gap:12px}
+
+.game-card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  flex:1;
+}
+.game-tag{
+  display:flex;align-items:center;gap:6px;
+  font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px;font-weight:700;
+}
+.game-tag .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+
+/* ── VS ROW ── */
+.vs-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.vs-row img{width:42px;height:42px;object-fit:contain;flex-shrink:0}
+.vs-row .opp{flex:1;min-width:0}
+.vs-row .opp h3{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;color:var(--text);line-height:1}
+.vs-row .opp p{font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ha-tag{font-size:9px;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;flex-shrink:0}
+.ha-home{background:rgba(26,110,245,.1);color:var(--blue);border:1px solid rgba(26,110,245,.25)}
+.ha-away{background:rgba(180,83,9,.08);color:var(--gold);border:1px solid rgba(180,83,9,.2)}
+
+/* ── SCORE ── */
+.score-block{
+  display:flex;align-items:center;
+  background:var(--surface3);border:1px solid var(--border2);
+  border-radius:10px;padding:12px 14px;margin-bottom:12px;
+  position:relative;overflow:hidden;
+}
+.score-block.wb::before,.score-block.lb::before{content:'';position:absolute;inset:0}
+.score-block.wb::before{background:linear-gradient(135deg,var(--win-bg) 0%,transparent 55%)}
+.score-block.lb::before{background:linear-gradient(135deg,var(--loss-bg) 0%,transparent 55%)}
+.sc-team{display:flex;flex-direction:column;align-items:center;flex:1;position:relative}
+.sc-team img{width:28px;height:28px;object-fit:contain;margin-bottom:3px}
+.sc-team .ab{font-size:9px;letter-spacing:1.5px;color:var(--muted);font-family:'Bebas Neue',sans-serif}
+.sc-num{font-family:'Bebas Neue',sans-serif;font-size:42px;line-height:1;position:relative}
+.sc-num.w{color:var(--win)}.sc-num.l{color:var(--loss)}.sc-num.tie{color:var(--muted)}
+.sc-sep{display:flex;flex-direction:column;align-items:center;padding:0 8px;position:relative}
+.sc-sep span{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--muted2);line-height:1}
+.sc-per{font-size:8px;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-top:3px;text-align:center;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:5px;
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
+.chip.w{background:var(--win-bg);color:var(--win);border:1px solid var(--win-border)}
+.chip.l{background:var(--loss-bg);color:var(--loss);border:1px solid var(--loss-border)}
+
+/* ── INFO ROWS ── */
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+.info-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:7px}
+.info-row:last-child{margin-bottom:0}
+.info-row strong{color:var(--text);font-weight:500}
+
+/* ── HIGHLIGHT BUTTON ── */
+.yt-btn{
+  display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-top:14px;
+  background:var(--yt-bg);border:1.5px solid var(--yt-border);border-radius:11px;
+  color:var(--yt);font-size:13px;font-weight:600;text-decoration:none;
+  transition:all .15s;font-family:'DM Sans',sans-serif;position:relative;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+.yt-btn::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(204,0,0,.07),transparent);opacity:0;transition:opacity .2s}
+.yt-btn:hover::before,.yt-btn:active::before{opacity:1}
+.yt-btn:active{transform:scale(.98)}
+.yt-btn.searching{animation:ytp 1.5s ease-in-out infinite}
+@keyframes ytp{0%,100%{opacity:.6}50%{opacity:1}}
+.yi{flex-shrink:0;width:22px;height:22px;background:#cc0000;border-radius:5px;display:flex;align-items:center;justify-content:center}
+.yt{flex:1;text-align:left;line-height:1.2}
+.yt small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
+.yb{background:rgba(204,0,0,.1);border:1px solid rgba(204,0,0,.2);border-radius:4px;
+  padding:2px 6px;font-size:9px;font-weight:700;color:var(--yt);letter-spacing:.5px;flex-shrink:0}
+.sub-link{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;padding:9px 14px;margin-top:7px;
+  background:transparent;border:1px solid var(--border2);border-radius:10px;
+  color:var(--muted);font-size:12px;font-weight:500;text-decoration:none;
+  transition:all .15s;font-family:'DM Sans',sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+.sub-link:hover,.sub-link:active{background:var(--surface3);color:var(--text)}
+
+/* ── LIVE BADGE ── */
+.live-badge{
+  display:inline-flex;align-items:center;gap:5px;background:var(--win-bg);
+  border:1px solid var(--win-border);border-radius:6px;padding:3px 9px;
+  font-size:9px;letter-spacing:2px;color:var(--win);font-weight:700;
+  margin-bottom:12px;text-transform:uppercase;
+}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--win);
+  animation:lp 1s ease-in-out infinite;display:inline-block}
+@keyframes lp{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ── LOADER ── */
+.loader{text-align:center;padding:44px 20px}
+.loader-spinner{width:28px;height:28px;border:2px solid var(--border2);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:spin .7s linear infinite;margin:0 auto 14px}
+.loader h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;
+  color:var(--text);margin-bottom:5px}
+.loader p{color:var(--muted);font-size:10px;letter-spacing:2px;text-transform:uppercase}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── ERROR / MISC ── */
+.error-box{background:var(--loss-bg);border:1px solid var(--loss-border);
+  border-radius:10px;padding:14px 16px;margin-top:12px}
+.error-box p{color:var(--loss);font-size:13px;line-height:1.6}
+.no-game{color:var(--muted);font-size:12px;padding:6px 0;line-height:1.7}
+.hidden{display:none}
+.retry-btn{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  width:100%;max-width:200px;padding:10px 18px;margin:14px auto 0;
+  background:var(--blue-lt);border:1.5px solid var(--blue);
+  border-radius:10px;color:var(--blue);font-size:13px;font-weight:600;
+  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
+}
+.retry-btn:hover,.retry-btn:active{background:var(--blue);color:#fff}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="header">
+    <div class="header-title">
+      <div class="nhl-logo">
+        <svg viewBox="0 0 60 70" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
+          <defs>
+            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#c8d0dc"/>
+              <stop offset="50%" stop-color="#8a9ab0"/>
+              <stop offset="100%" stop-color="#4a5568"/>
+            </linearGradient>
+            <linearGradient id="innerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1a2a4a"/>
+              <stop offset="100%" stop-color="#0d1829"/>
+            </linearGradient>
+          </defs>
+          <!-- Outer shield -->
+          <path d="M30 2 L56 12 L56 38 C56 54 30 68 30 68 C30 68 4 54 4 38 L4 12 Z"
+            fill="url(#shieldGrad)" stroke="#b0bcc8" stroke-width="1"/>
+          <!-- Inner shield -->
+          <path d="M30 7 L51 16 L51 38 C51 51 30 63 30 63 C30 63 9 51 9 38 L9 16 Z"
+            fill="url(#innerGrad)"/>
+          <!-- NHL text -->
+          <text x="30" y="42" text-anchor="middle" font-family="Arial Black,sans-serif"
+            font-size="18" font-weight="900" fill="#c8d4e8" letter-spacing="1">NHL</text>
+        </svg>
+      </div>
+      <h1>NHL <span>TRACKER</span></h1>
+    </div>
+    <p>Tap a team · Next game · Last result · Highlights</p>
+  </div>
+  <div class="teams-wrap">
+    <div class="teams-strip" id="teamsGrid"></div>
+  </div>
+</div>
+
+<div class="detail-wrap">
+  <div id="detailPanel" class="hidden"></div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   DATA: ESPN public API — same source powering Google Sports panels
+   Direct fetch · CORS-open · No proxy · ~200ms · Full season data
+══════════════════════════════════════════════════════════════════ */
+
+const TEAMS = [
+  {a:"ANA",c:"Anaheim",      n:"Ducks",          color:"#F47A38"},
+  {a:"BOS",c:"Boston",       n:"Bruins",          color:"#FFB81C"},
+  {a:"BUF",c:"Buffalo",      n:"Sabres",          color:"#4189c7"},
+  {a:"CGY",c:"Calgary",      n:"Flames",          color:"#C8102E"},
+  {a:"CAR",c:"Carolina",     n:"Hurricanes",      color:"#CC0000"},
+  {a:"CHI",c:"Chicago",      n:"Blackhawks",      color:"#CF0A2C"},
+  {a:"COL",c:"Colorado",     n:"Avalanche",       color:"#8B6FAE"},
+  {a:"CBJ",c:"Columbus",     n:"Blue Jackets",    color:"#5A8AC6"},
+  {a:"DAL",c:"Dallas",       n:"Stars",           color:"#00843D"},
+  {a:"DET",c:"Detroit",      n:"Red Wings",       color:"#CE1126"},
+  {a:"EDM",c:"Edmonton",     n:"Oilers",          color:"#FF6B35"},
+  {a:"FLA",c:"Florida",      n:"Panthers",        color:"#C8102E"},
+  {a:"LAK",c:"Los Angeles",  n:"Kings",           color:"#a2a2a5"},
+  {a:"MIN",c:"Minnesota",    n:"Wild",            color:"#2E7D32"},
+  {a:"MTL",c:"Montréal",     n:"Canadiens",       color:"#AF1E2D"},
+  {a:"NSH",c:"Nashville",    n:"Predators",       color:"#FFB81C"},
+  {a:"NJD",c:"New Jersey",   n:"Devils",          color:"#CE1126"},
+  {a:"NYI",c:"NY Islanders", n:"Islanders",       color:"#FC4C02"},
+  {a:"NYR",c:"NY Rangers",   n:"Rangers",         color:"#0054A4"},
+  {a:"OTT",c:"Ottawa",       n:"Senators",        color:"#E3141C"},
+  {a:"PHI",c:"Philadelphia", n:"Flyers",          color:"#F74902"},
+  {a:"PIT",c:"Pittsburgh",   n:"Penguins",        color:"#FCB514"},
+  {a:"SJS",c:"San Jose",     n:"Sharks",          color:"#20B2AA"},
+  {a:"SEA",c:"Seattle",      n:"Kraken",          color:"#3CBFE0"},
+  {a:"STL",c:"St. Louis",    n:"Blues",           color:"#2563EB"},
+  {a:"TBL",c:"Tampa Bay",    n:"Lightning",       color:"#5B8FD4"},
+  {a:"TOR",c:"Toronto",      n:"Maple Leafs",     color:"#4189c7"},
+  {a:"UTA",c:"Utah",         n:"Mammoth",         color:"#4B92DB"},
+  {a:"VAN",c:"Vancouver",    n:"Canucks",         color:"#00843D"},
+  {a:"VGK",c:"Vegas",        n:"Golden Knights",  color:"#B4975A"},
+  {a:"WSH",c:"Washington",   n:"Capitals",        color:"#C8102E"},
+  {a:"WPG",c:"Winnipeg",     n:"Jets",            color:"#4B6EAF"},
+];
+
+// ESPN uses different abbreviations from NHL (e.g. TB vs TBL, NJ vs NJD).
+// We resolve logos correctly by building a two-way map from the API response.
+let espnIdMap  = {};   // our NHL abbr → ESPN numeric id
+let espnToNHL  = {};   // ESPN abbr    → our NHL abbr
+
+const nhlLogo  = a => `https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
+const espnLogo = a => `https://a.espncdn.com/i/teamlogos/nhl/500/${(a||'nhl').toLowerCase()}.png`;
+function logoFor(espnAbbr) {
+  const our = espnToNHL[espnAbbr] || espnAbbr;
+  return nhlLogo(our);
+}
+
+// Fetch ESPN team list immediately in background — done before user clicks anything
+const espnReady = fetch(
+  'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',
+  { signal: AbortSignal.timeout(8000) }
+).then(r => r.json()).then(data => {
+  for (const { team: e } of data.sports[0].leagues[0].teams) {
+    const match = TEAMS.find(t => t.n.toLowerCase() === (e.name||'').toLowerCase())
+               || TEAMS.find(t => (e.displayName||'').toLowerCase().includes(t.n.toLowerCase()));
+    if (match) {
+      espnIdMap[match.a]       = e.id;
+      espnToNHL[e.abbreviation] = match.a;
+    }
+  }
+}).catch(e => console.warn('ESPN init:', e.message));
+
+// Score parser — ESPN returns score as string, number, or {value, displayValue}
+function parseScore(s) {
+  if (s == null) return null;
+  if (typeof s === 'number') return s;
+  if (typeof s === 'string') { const n = parseInt(s,10); return isNaN(n)?null:n; }
+  if (typeof s === 'object') { const v = s.value??parseInt(s.displayValue,10); return isNaN(v)?null:v; }
+  return null;
+}
+
+// Date formatter — ET for game-night dates (matches NHL titles)
+const ET = 'America/New_York';
+function fmtDate(s) {
+  const d = new Date(s);
+  return {
+    date:      d.toLocaleDateString('en-US',{timeZone:ET,weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    time:      d.toLocaleTimeString('en-US',{timeZone:ET,hour:'numeric',minute:'2-digit',timeZoneName:'short'}),
+    localTime: d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',timeZoneName:'short'}),
+  };
+}
+
+// ── UI ────────────────────────────────────────────────────────────
+const grid  = document.getElementById('teamsGrid');
+const panel = document.getElementById('detailPanel');
+let loadToken = 0;
+
+TEAMS.forEach(t => {
+  const btn = document.createElement('button');
+  btn.className = 'team-btn';
+  btn.id = 'btn-' + t.a;
+  btn.style.setProperty('--tc', t.color);
+  btn.innerHTML = `<img src="${nhlLogo(t.a)}" alt="${t.n}" onerror="this.src='${espnLogo(t.a)}'"><span>${t.a}</span>`;
+  btn.addEventListener('click', () => selectTeam(t));
+  grid.appendChild(btn);
+});
+
+function selectTeam(t) {
+  document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-'+t.a).classList.add('active');
+  // Scroll the selected team into center of the strip
+  const activeBtn = document.getElementById('btn-'+t.a);
+  activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  const tok = ++loadToken;
+  panel.className = 'detail-panel';
+  panel.style.setProperty('--tc', t.color);
+  panel.innerHTML = `<div class="loader"><div class="loader-spinner"></div><h3>${t.n}</h3><p id="ls">Connecting to ESPN…</p></div>`;
+  panel.scrollIntoView({behavior:'smooth',block:'start'});
+  loadTeam(t, tok);
+}
+
+function step(m) { const el=document.getElementById('ls'); if(el) el.textContent=m; }
+
+// ── MAIN FETCH — one ESPN call, direct, no proxy ──────────────────
+async function loadTeam(t, tok) {
+  try {
+    await espnReady;                       // already resolved, instant
+    if (tok !== loadToken) return;
+
+    // If init failed (rare), try building the map now
+    if (!espnIdMap[t.a]) {
+      step('Looking up team…');
+      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',
+        {signal:AbortSignal.timeout(8000)});
+      const d = await r.json();
+      for (const {team:e} of d.sports[0].leagues[0].teams) {
+        const m = TEAMS.find(x => x.n.toLowerCase()===(e.name||'').toLowerCase());
+        if (m) { espnIdMap[m.a]=e.id; espnToNHL[e.abbreviation]=m.a; }
+      }
+    }
+    if (tok !== loadToken) return;
+
+    const eid = espnIdMap[t.a];
+    if (!eid) throw new Error(`ESPN has no record for ${t.a}. The team list may not have loaded — try again.`);
+
+    step('Fetching schedule…');
+
+    const r = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${eid}/schedule`,
+      {signal:AbortSignal.timeout(8000)}
+    );
+    if (!r.ok) throw new Error(`ESPN returned HTTP ${r.status}`);
+    const data = await r.json();
+    if (tok !== loadToken) return;
+
+    const past=[], future=[];
+    for (const ev of (data.events||[])) {
+      const comp  = ev.competitions?.[0];
+      const state = comp?.status?.type?.state||'';
+      if (comp?.status?.type?.completed)            past.push(ev);
+      else if (state==='pre' || state==='in') future.push(ev);
+    }
+    past.sort((a,b)   => new Date(a.date)-new Date(b.date));
+    future.sort((a,b) => new Date(a.date)-new Date(b.date));
+
+    renderPanel(t, eid, past.at(-1)||null, future[0]||null);
+
+    // YouTube lookup — non-blocking
+    // Pass team objects directly — no string parsing, guaranteed correct nicknames
+    const lastGame = past.at(-1);
+    if (lastGame) {
+      const comp    = lastGame.competitions?.[0];
+      const myComp  = comp?.competitors?.find(c => String(c.team.id) === String(eid));
+      const oppComp = comp?.competitors?.find(c => String(c.team.id) !== String(eid));
+      const oppNHL  = TEAMS.find(x => x.a === (espnToNHL[oppComp?.team?.abbreviation] || ''));
+      findHighlight(t, oppNHL || {n: oppComp?.team?.shortDisplayName || oppComp?.team?.abbreviation || '?'}, myComp?.homeAway === 'home', new Date(lastGame.date)).then(yt => {
+        if (tok !== loadToken) return;
+        const btn = document.getElementById('ytBtn');
+        if (!btn) return;
+        btn.href = yt.url;
+        btn.classList.remove('searching');
+        const lbl = (yt.label||'').length>52 ? yt.label.slice(0,52)+'…' : yt.label;
+        btn.innerHTML = yt.direct
+          ? `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">DIRECT LINK</span>`
+          : `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">SEARCH</span>`;
+      });
+    }
+
+  } catch(e) {
+    if (tok !== loadToken) return;
+    panel.innerHTML = `
+      <div class="detail-head">
+        <img src="${nhlLogo(t.a)}" style="width:84px;height:84px;object-fit:contain" onerror="this.src='${espnLogo(t.a)}'">
+        <div class="ti"><h2>${t.c} ${t.n}</h2><p>NHL · <span>${t.a}</span></p></div>
+      </div>
+      <div class="error-box"><p>⚠️ ${e.message}</p></div>
+      <button class="retry-btn" onclick="retryTeam('${t.a}')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+        Try Again
+      </button>`;
+  }
+}
+
+function retryTeam(abbr) {
+  espnIdMap = {};
+  const t = TEAMS.find(x => x.a===abbr);
+  if (t) selectTeam(t);
+}
+
+// ── YouTube highlight lookup ──────────────────────────────────────
+const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';
+
+// Exact nicknames from official NHL team reference table
+const YT_NICK = {
+  ANA:'Ducks',          BOS:'Bruins',         BUF:'Sabres',
+  CGY:'Flames',         CAR:'Hurricanes',      CHI:'Blackhawks',
+  COL:'Avalanche',      CBJ:'Blue Jackets',    DAL:'Stars',
+  DET:'Red Wings',      EDM:'Oilers',          FLA:'Panthers',
+  LAK:'Kings',          MIN:'Wild',            MTL:'Canadiens',
+  NSH:'Predators',      NJD:'Devils',          NYI:'Islanders',
+  NYR:'Rangers',        OTT:'Senators',        PHI:'Flyers',
+  PIT:'Penguins',       SJS:'Sharks',          SEA:'Kraken',
+  STL:'Blues',          TBL:'Lightning',       TOR:'Maple Leafs',
+  UTA:'Mammoth',        VAN:'Canucks',         VGK:'Golden Knights',
+  WSH:'Capitals',       WPG:'Jets',
+};
+
+async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
+  const myNick   = YT_NICK[myTeam.a]  || myTeam.n;
+  const oppNick  = YT_NICK[oppTeam.a] || oppTeam.n;
+  const awayNick = iAmHome ? oppNick : myNick;
+  const homeNick = iAmHome ? myNick  : oppNick;
+
+  // ET date — game-night date matching NHL YouTube title format
+  const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
+    month:'long',day:'2-digit',year:'numeric'}).formatToParts(gameDate);
+  const dateStr = `${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
+
+  const titleStr    = `${awayNick} vs. ${homeNick} | NHL Highlights | ${dateStr}`;
+  const quotedQuery = `${titleStr}`;
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(quotedQuery)}`;
+
+  // Extract videoId from HTML — look for one contextually near both team names
+  function extractVideoId(html) {
+    if (!html) return null;
+    const hl = html.toLowerCase();
+    const away = awayNick.toLowerCase(), home = homeNick.toLowerCase();
+    const allIds = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+    for (const m of allIds) {
+      const ctx = hl.slice(Math.max(0, m.index - 400), m.index + 400);
+      if (ctx.includes(away) && ctx.includes(home)) return m[1];
+    }
+    return allIds[0]?.[1] || null;
+  }
+
+  // ── Race RSS + two scrape proxies all at once — first win takes it ──
+  const rssPromise = (async () => {
+    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`;
+    const xml = await Promise.any([
+      fetch(rssUrl, {signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)throw 0;return r.text();}),
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+        {signal:AbortSignal.timeout(4000)}).then(r=>r.json()).then(d=>d.contents||''),
+    ]);
+    const doc = new DOMParser().parseFromString(xml, 'application/xml');
+    for (const en of doc.querySelectorAll('entry')) {
+      const title = en.querySelector('title')?.textContent || '';
+      const diff  = (new Date(en.querySelector('published')?.textContent||'') - gameDate) / 86400000;
+      if (diff < 0 || diff > 2) continue;
+      const tl = title.toLowerCase();
+      if (!tl.includes(awayNick.toLowerCase()) || !tl.includes(homeNick.toLowerCase()) || !tl.includes('nhl highlight')) continue;
+      const link = en.querySelector('link')?.getAttribute('href') || '';
+      if (link.includes('youtube.com/watch')) return {url:link, direct:true, label:title};
+    }
+    throw new Error('no RSS match');
+  })();
+
+  const scrapeA = fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`,
+    {signal:AbortSignal.timeout(5000)})
+    .then(r=>r.json()).then(d=>{
+      const vid = extractVideoId(d.contents||'');
+      if (!vid) throw new Error('no id');
+      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
+    });
+
+  const scrapeB = fetch(`https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
+    {signal:AbortSignal.timeout(5000)})
+    .then(r=>{if(!r.ok)throw 0;return r.text();}).then(html=>{
+      const vid = extractVideoId(html);
+      if (!vid) throw new Error('no id');
+      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
+    });
+
+  try {
+    return await Promise.any([rssPromise, scrapeA, scrapeB]);
+  } catch(_) {
+    return {url:searchUrl, direct:false, label:titleStr};
+  }
+}
+
+// ── SVGs ──────────────────────────────────────────────────────────
+const YT  = `<svg width="12" height="9" viewBox="0 0 12 9" fill="white"><path d="M11.76 1.4A1.5 1.5 0 0 0 10.7.33C9.76 0 6 0 6 0S2.24 0 1.3.33A1.5 1.5 0 0 0 .24 1.4C0 2.35 0 4.5 0 4.5s0 2.15.24 3.1A1.5 1.5 0 0 0 1.3 8.67C2.24 9 6 9 6 9s3.76 0 4.7-.33a1.5 1.5 0 0 0 1.06-1.07C12 6.65 12 4.5 12 4.5s0-2.15-.24-3.1zM4.8 6.43V2.57L7.92 4.5 4.8 6.43z"/></svg>`;
+const CAL = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const CLK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+const HOM = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+const TVS = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>`;
+
+// ── Render ────────────────────────────────────────────────────────
+function renderPanel(t, espnId, last, next) {
+  const myId = String(espnId);
+
+  // Next game card
+  const nextHTML = (() => {
+    if (!next) return `<p class="no-game">No upcoming games scheduled.</p>`;
+    const comp   = next.competitions[0];
+    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
+    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
+    const isHome = mine?.homeAway==='home';
+    const oppT   = opp?.team||{};
+    const {date,time,localTime} = fmtDate(next.date);
+    const venue  = comp.venue?.fullName||'';
+    const isLive = comp.status?.type?.state==='in';
+    const detail = comp.status?.type?.detail||'';
+    return `
+      ${isLive?`<div class="live-badge"><span class="live-dot"></span>LIVE · ${detail}</div>`:''}
+      <div class="vs-row">
+        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+        <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
+        <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
+      </div>
+      <hr class="divider">
+      <div class="info-row">${CAL}<strong>${date}</strong></div>
+      <div class="info-row">${CLK}<strong>${localTime}</strong></div>
+      ${venue?`<div class="info-row">${HOM}<strong>${venue}</strong></div>`:''}`;
+  })();
+
+  // Last game card
+  const lastHTML = (() => {
+    if (!last) return `<p class="no-game">No recent game data found.</p>`;
+    const comp   = last.competitions[0];
+    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
+    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
+    const isHome = mine?.homeAway==='home';
+    const oppT   = opp?.team||{};
+    const myS    = parseScore(mine?.score);
+    const oppS   = parseScore(opp?.score);
+    const hasS   = myS!==null&&oppS!==null;
+    const won    = mine?.winner===true;
+    const {date} = fmtDate(last.date);
+    const status = comp.status?.type?.shortDetail||comp.status?.type?.description||'Final';
+
+    const scoreHTML = hasS ? `
+      <div class="score-block ${won?'wb':'lb'}">
+        <div class="sc-team">
+          <img src="${nhlLogo(t.a)}" alt="${t.a}" onerror="this.src='${espnLogo(t.a)}'">
+          <div class="sc-num ${won?'w':'l'}">${myS}</div>
+          <div class="ab">${t.a}</div>
+        </div>
+        <div class="sc-sep"><span>–</span><div class="sc-per">${status}</div></div>
+        <div class="sc-team">
+          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+          <div class="sc-num">${oppS}</div>
+          <div class="ab">${oppT.abbreviation||'?'}</div>
+        </div>
+      </div>
+      <div class="chip ${won?'w':'l'}">${won?'✓ WIN':'✗ LOSS'}</div>` : '';
+
+    return `
+      <div class="vs-row">
+        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+        <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
+        <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
+      </div>
+      ${scoreHTML}
+      <hr class="divider">
+      <div class="info-row">${CAL}<strong>${date}</strong></div>
+      <a id="ytBtn" href="#" target="_blank" rel="noopener" class="yt-btn searching"
+         onclick="if(this.href==='#'||this.href.endsWith('#')){event.preventDefault()}">
+        <div class="yi">${YT}</div>
+        <div class="yt"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div>
+        <span class="yb">LOADING</span>
+      </a>
+      <a href="https://www.espn.com/nhl/game/_/gameId/${last.id}" target="_blank" rel="noopener" class="sub-link">
+        ${TVS} View full recap on ESPN
+      </a>`;
+  })();
+
+  panel.innerHTML = `
+    <div class="detail-head">
+      <img src="${nhlLogo(t.a)}" alt="${t.n}" onerror="this.src='${espnLogo(t.a)}'">
+      <div class="ti">
+        <h2>${t.c} ${t.n}</h2>
+        <p>NHL · <span>${t.a}</span></p>
+      </div>
+    </div>
+    <div class="games-grid">
+      <div class="game-card">
+        <div class="game-tag"><span class="dot" style="background:var(--muted2)"></span>Last Game</div>
+        ${lastHTML}
+      </div>
+      <div class="game-card">
+        <div class="game-tag"><span class="dot" style="background:var(--blue)"></span>Next Game</div>
+        ${nextHTML}
+      </div>
+    </div>`;
+}
+</script>
+</body>
+</html>
