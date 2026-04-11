@@ -434,29 +434,84 @@ const grid  = document.getElementById('teamsGrid');
 const panel = document.getElementById('detailPanel');
 let loadToken = 0;
 
+// ── Web Audio click sound for team tile ───────────────────────────
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playTick() {
+  try {
+    const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.06, audioCtx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.008));
+    }
+    const src  = audioCtx.createBufferSource();
+    const gain = audioCtx.createGain();
+    src.buffer = buf;
+    gain.gain.setValueAtTime(0.18, audioCtx.currentTime);
+    src.connect(gain);
+    gain.connect(audioCtx.destination);
+    src.start();
+  } catch(e) {}
+}
+
 TEAMS.forEach(t => {
   const btn = document.createElement('button');
   btn.className = 'team-btn';
   btn.id = 'btn-' + t.a;
   btn.style.setProperty('--tc', t.color);
   btn.innerHTML = `<img src="${nhlLogo(t.a)}" alt="${t.n}" onerror="this.src='${espnLogo(t.a)}'"><span>${t.a}</span>`;
-  btn.addEventListener('click', () => selectTeam(t));
+  btn.addEventListener('click', () => { playTick(); selectTeam(t); });
   grid.appendChild(btn);
 });
 
 function selectTeam(t) {
   document.querySelectorAll('.team-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('btn-'+t.a).classList.add('active');
-  // Scroll the selected team into center of the strip
   const activeBtn = document.getElementById('btn-'+t.a);
-  activeBtn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+  activeBtn.classList.add('active');
+  activeBtn.scrollIntoView({behavior:'smooth', block:'nearest', inline:'center'});
+
   const tok = ++loadToken;
   panel.className = 'detail-panel';
   panel.style.setProperty('--tc', t.color);
   panel.innerHTML = `<div class="loader"><div class="loader-spinner"></div><h3>${t.n}</h3><p id="ls">Connecting to ESPN…</p></div>`;
-  panel.scrollIntoView({behavior:'smooth',block:'start'});
+
+  // Scroll panel into view accounting for the sticky top-bar height
+  setTimeout(() => {
+    const topBar = document.querySelector('.top-bar');
+    const offset = topBar ? topBar.offsetHeight : 0;
+    const top = panel.getBoundingClientRect().top + window.scrollY - offset - 8;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, 50);
+
   loadTeam(t, tok);
 }
+
+// ── Scroll sound on teams strip ───────────────────────────────────
+grid.addEventListener('scroll', (() => {
+  let lastX = 0, ticking = false;
+  return function() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const dx = Math.abs(grid.scrollLeft - lastX);
+      if (dx > 18) {
+        lastX = grid.scrollLeft;
+        try {
+          const osc  = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200 + Math.random() * 300, audioCtx.currentTime);
+          gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.04);
+        } catch(e) {}
+      }
+      ticking = false;
+    });
+  };
+})());
 
 function step(m) { const el=document.getElementById('ls'); if(el) el.textContent=m; }
 
@@ -576,8 +631,7 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const dateStr = `${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
 
   const titleStr    = `${awayNick} vs. ${homeNick} | NHL Highlights | ${dateStr}`;
-  const quotedQuery = `${titleStr}`;
-  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(quotedQuery)}`;
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(titleStr)}`;
 
   // Extract videoId from HTML — look for one contextually near both team names
   function extractVideoId(html) {
