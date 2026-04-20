@@ -9,194 +9,198 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  /* ── Metallic gray palette ── */
-  --bg:#28292c;
-  --surface:#35383d;
-  --surface2:#2e3135;
-  --surface3:#292b2f;
-  --border:#46494f;
-  --border2:#585c65;
-  --text:#e6eaf0;
-  --muted:#9097a8;
-  --muted2:#62697a;
-  --blue:#6aabdf;
-  --blue-lt:rgba(106,171,223,.15);
-  --blue-glow:rgba(106,171,223,.3);
-  --win:#2ecc71;
-  --win-bg:rgba(46,204,113,.12);
-  --win-border:rgba(46,204,113,.28);
-  --loss:#e74c3c;
-  --loss-bg:rgba(231,76,60,.12);
-  --loss-border:rgba(231,76,60,.28);
-  --yt:#ff3333;
-  --yt-bg:rgba(255,50,50,.1);
-  --yt-border:rgba(255,50,50,.28);
-  --gold:#f0b429;
-  --radius:16px;
-  --shadow:0 2px 14px rgba(0,0,0,.35);
-  --shadow-md:0 8px 32px rgba(0,0,0,.45);
+  --bg:#28292c;--surface:#35383d;--surface2:#2e3135;--surface3:#292b2f;
+  --border:#46494f;--border2:#585c65;--text:#e6eaf0;--muted:#9097a8;--muted2:#62697a;
+  --blue:#6aabdf;--blue-lt:rgba(106,171,223,.15);--blue-glow:rgba(106,171,223,.3);
+  --win:#2ecc71;--win-bg:rgba(46,204,113,.12);--win-border:rgba(46,204,113,.28);
+  --loss:#e74c3c;--loss-bg:rgba(231,76,60,.12);--loss-border:rgba(231,76,60,.28);
+  --yt:#ff3333;--yt-bg:rgba(255,50,50,.1);--yt-border:rgba(255,50,50,.28);
+  --gold:#f0b429;--cup:#c9a84c;--cup-lt:rgba(201,168,76,.1);--cup-glow:rgba(201,168,76,.3);
+  --radius:16px;--shadow:0 2px 14px rgba(0,0,0,.35);--shadow-md:0 8px 32px rgba(0,0,0,.45);
 }
-
 html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh}
-
-/* ── METALLIC BACKGROUND — mimics brushed hockey puck metal ── */
 body{
-  background:
-    radial-gradient(ellipse 150% 80% at 50% -5%, rgba(160,165,175,.1) 0%, transparent 50%),
-    radial-gradient(ellipse 100% 100% at 50% 50%, #32353a 0%, #1e2023 100%);
+  background:radial-gradient(ellipse 150% 80% at 50% -5%,rgba(160,165,175,.1) 0%,transparent 50%),
+    radial-gradient(ellipse 100% 100% at 50% 50%,#32353a 0%,#1e2023 100%);
   background-attachment:fixed;
 }
-/* subtle horizontal brushed-metal lines */
-body::before{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:repeating-linear-gradient(
-    180deg,
-    rgba(255,255,255,.018) 0px, rgba(255,255,255,.018) 1px,
-    transparent 1px, transparent 3px
-  );
-}
-/* vignette darkening the edges like a puck */
-body::after{
-  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(ellipse 90% 90% at 50% 50%,
-    transparent 45%, rgba(0,0,0,.5) 100%);
-}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.018) 0px,rgba(255,255,255,.018) 1px,transparent 1px,transparent 3px);}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 90% 90% at 50% 50%,transparent 45%,rgba(0,0,0,.5) 100%);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes lp{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes ytp{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(46,204,113,.4)}50%{box-shadow:0 0 0 4px rgba(46,204,113,0)}}
 
-/* ── STICKY TOP — header + strip as one unit, zero gap ── */
-.top-bar{position:sticky;top:0;z-index:100;background:var(--surface);
-  box-shadow:0 2px 10px rgba(15,28,46,.09);}
-/* ── HEADER — compact for mobile ── */
-.header{
-  text-align:center;padding:14px 16px 12px;
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-}
+/* ── HEADER ── */
+.top-bar{position:sticky;top:0;z-index:100;background:var(--surface);box-shadow:0 2px 10px rgba(15,28,46,.09);}
+.header{text-align:center;padding:14px 16px 12px;border-bottom:1px solid var(--border);}
 .header-title{display:flex;align-items:center;justify-content:center;gap:12px}
-.nhl-logo{width:56px;height:56px;flex-shrink:0;border-radius:50%;overflow:hidden;
-  box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.1);
-  cursor:pointer;transition:transform .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent}
-.nhl-logo:active{transform:scale(.92)}
-.header h1{
-  font-family:'Bebas Neue',sans-serif;
-  font-size:clamp(36px,8vw,56px);
-  letter-spacing:6px;line-height:1;color:var(--text);
-}
+.nhl-logo{width:56px;height:56px;flex-shrink:0;border-radius:50%;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.1);cursor:pointer;transition:transform .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent;}
+.nhl-logo:hover{transform:scale(1.08);box-shadow:0 4px 18px rgba(0,0,0,.6),0 0 0 2px rgba(106,171,223,.5);}
+.nhl-logo:active{transform:scale(.93);}
+.header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,8vw,56px);letter-spacing:6px;line-height:1;color:var(--text);}
 .header h1 span{color:var(--blue)}
 .header p{color:var(--muted);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;margin-top:5px}
-
-/* ── TEAM STRIP — horizontal scroll ── */
-.teams-wrap{
-  background:var(--surface);
-  border-bottom:1px solid var(--border);
-}
-.strip-label{
-  font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
-  color:var(--muted2);padding:8px 16px 0;font-weight:600;
-}
-.teams-strip{
-  display:flex;flex-direction:row;
-  overflow-x:auto;overflow-y:hidden;
-  gap:6px;padding:8px 16px 10px;
-  scroll-behavior:smooth;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none; /* Firefox */
-}
+.teams-wrap{background:var(--surface);border-bottom:1px solid var(--border);position:relative;}
+.teams-strip{display:flex;overflow-x:auto;overflow-y:hidden;gap:6px;padding:8px 16px 10px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .teams-strip::-webkit-scrollbar{display:none}
-
-/* Fade edges to hint scrollability */
-.teams-wrap{position:relative}
-.teams-wrap::before,.teams-wrap::after{
-  content:'';position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:2;
-}
+.teams-wrap::before,.teams-wrap::after{content:'';position:absolute;top:0;bottom:0;width:20px;pointer-events:none;z-index:2;}
 .teams-wrap::before{left:0;background:linear-gradient(to right,var(--surface),transparent)}
 .teams-wrap::after{right:0;background:linear-gradient(to left,var(--surface),transparent)}
-
-.team-btn{
-  flex:0 0 auto;
-  background:var(--surface2);
-  border:1.5px solid var(--border);
-  border-radius:12px;
-  padding:8px 10px 6px;
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  cursor:pointer;
-  transition:all .16s ease;
-  position:relative;overflow:hidden;
-  min-width:68px;
-  -webkit-tap-highlight-color:transparent;
-}
-.team-btn::after{
-  content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;
-  background:var(--tc,var(--blue));transform:scaleX(0);
-  transition:transform .18s;transform-origin:center;
-  border-radius:2px 2px 0 0;
-}
+.team-btn{flex:0 0 auto;background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:8px 10px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;transition:all .16s ease;position:relative;overflow:hidden;min-width:68px;-webkit-tap-highlight-color:transparent;}
+.team-btn::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2.5px;background:var(--tc,var(--blue));transform:scaleX(0);transition:transform .18s;transform-origin:center;border-radius:2px 2px 0 0;}
 .team-btn:active{transform:scale(.94)}
-.team-btn.active{
-  background:var(--blue-lt);
-  border-color:var(--tc,var(--blue));
-  box-shadow:0 2px 10px -2px var(--blue-glow);
-}
+.team-btn.active{background:var(--blue-lt);border-color:var(--tc,var(--blue));box-shadow:0 2px 10px -2px var(--blue-glow);}
 .team-btn.active::after{transform:scaleX(1);background:var(--tc,var(--blue))}
-.team-btn img{
-  width:44px;height:44px;object-fit:contain;
-  transition:transform .16s;
-}
+.team-btn img{width:44px;height:44px;object-fit:contain;transition:transform .16s;}
 .team-btn.active img{transform:scale(1.08)}
-.team-btn span{
-  font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1.5px;
-  color:var(--muted);transition:color .16s;white-space:nowrap;
-}
+.team-btn span{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1.5px;color:var(--muted);transition:color .16s;white-space:nowrap;}
 .team-btn.active span{color:var(--tc,var(--blue))}
 
-/* ── DETAIL AREA ── */
-.detail-wrap{padding:14px 12px 60px;max-width:680px;margin:0 auto}
+/* ── LAYOUT ── */
+.detail-wrap{padding:14px 12px 60px;max-width:720px;margin:0 auto}
 
-.detail-panel{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:20px 16px;
-  position:relative;overflow:hidden;
-  animation:fadeUp .25s ease;
-  box-shadow:var(--shadow-md);
-}
-.detail-panel::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:3px;
-  background:linear-gradient(90deg,var(--tc,var(--blue)) 0%,transparent 70%);
-}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* ── PLAYOFF TILE ── */
+.pb-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:14px;position:relative;box-shadow:var(--shadow-md);animation:fadeUp .25s ease;}
+.pb-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--cup) 0%,rgba(201,168,76,.4) 60%,transparent 100%);border-radius:var(--radius) var(--radius) 0 0;z-index:1;}
+.pb-hdr{display:flex;align-items:center;gap:12px;padding:13px 16px 11px;border-bottom:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;border-radius:var(--radius) var(--radius) 0 0;overflow:hidden;}
+.pb-trophy{font-size:24px;flex-shrink:0;line-height:1}
+.pb-ttl{flex:1}
+.pb-ttl h2{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;color:var(--text);line-height:1;}
+.pb-ttl p{color:var(--muted);font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-top:3px;}
+.pb-badge{font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;padding:3px 10px;border-radius:6px;flex-shrink:0;}
+.pb-badge.live{background:var(--win-bg);color:var(--win);border:1px solid var(--win-border)}
+.pb-badge.live::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--win);animation:lp 1s infinite;margin-right:5px;vertical-align:middle}
+.pb-badge.loading{background:var(--cup-lt);color:var(--cup);border:1px solid var(--cup-glow)}
+.pb-badge.idle{background:var(--surface2);color:var(--muted2);border:1px solid var(--border)}
+.pb-chev{color:var(--muted2);font-size:13px;transition:transform .22s;flex-shrink:0;}
+.pb-chev.open{transform:rotate(180deg)}
+.pb-body{overflow:hidden;transition:max-height .42s cubic-bezier(.4,0,.2,1);max-height:0;display:flex;flex-direction:column;}
+.pb-body.open{max-height:1200px}
+.pb-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;padding:0 0 16px;scrollbar-width:thin;scrollbar-color:var(--border2) transparent;flex-shrink:0;text-align:center;white-space:nowrap;}
+.pb-scroll::-webkit-scrollbar{height:4px}
+.pb-scroll::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+.bk-outer{display:inline-block;padding:0 16px;text-align:left;vertical-align:top;}
 
-/* Team header inside panel */
-.detail-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
-.detail-head img{width:60px;height:60px;object-fit:contain;flex-shrink:0}
-.detail-head .ti h2{
-  font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2.5px;line-height:1.05;color:var(--text)
+/* ── BRACKET HEADER ROW (conf nav buttons — stays above scroll) ── */
+.bk-hdr-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;flex-shrink:0;
+  width:100%;box-sizing:border-box;
+  padding:10px 16px 6px;
 }
-.detail-head .ti p{color:var(--muted);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;margin-top:5px;font-weight:500}
-.detail-head .ti p span{
-  color:var(--tc,var(--blue));background:var(--blue-lt);
-  padding:1px 7px;border-radius:4px;border:1px solid var(--blue-glow);
-  margin-left:5px;font-size:9px;
+.bk-conf-pill{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 9px;border-radius:20px;
+  font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;
+  white-space:nowrap;cursor:pointer;flex-shrink:1;min-width:0;
+  transition:opacity .15s,transform .12s;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.bk-conf-pill:hover{opacity:.8;}
+.bk-conf-pill:active{transform:scale(.93);}
+.bk-conf-pill.west{background:rgba(106,171,223,.12);color:var(--blue);border:1px solid rgba(106,171,223,.3);}
+.bk-conf-pill.east{background:rgba(240,180,41,.1);color:var(--gold);border:1px solid rgba(240,180,41,.28);}
+.bk-conf-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.bk-conf-pill.west .bk-conf-dot{background:var(--blue);}
+.bk-conf-pill.east .bk-conf-dot{background:var(--gold);}
+.bk-conf-arr{font-size:13px;line-height:1;flex-shrink:0;}
+.bk-scf-pill{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:4px 8px;border-radius:20px;
+  font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;
+  color:var(--cup);border:1px solid var(--cup-glow);background:var(--cup-lt);
+  white-space:nowrap;flex-shrink:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
 }
 
-/* ── GAME CARDS — always stacked ── */
-.games-grid{display:flex;flex-direction:column;gap:12px}
+/* gray abbr spans inside score label */
+.bk-abbr{color:var(--muted2);letter-spacing:.5px;}
 
-.game-card{
+/* ── BRACKET CARDS ── */
+.bk-wrap{position:relative;display:block;}
+.bk-line{position:absolute;background:rgba(88,92,101,.7);border-radius:1px;}
+
+/* ── INDIVIDUAL CARD ── */
+.bk-c{
+  position:absolute;
   background:var(--surface2);
   border:1px solid var(--border);
-  border-radius:14px;
-  padding:16px;
-  flex:1;
+  border-radius:10px;
+  overflow:hidden;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  transition:border-color .15s,box-shadow .15s,transform .12s;
+  -webkit-tap-highlight-color:transparent;
 }
-.game-tag{
-  display:flex;align-items:center;gap:6px;
-  font-size:9px;letter-spacing:2.5px;text-transform:uppercase;
-  color:var(--muted);margin-bottom:14px;font-weight:700;
-}
-.game-tag .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.bk-c:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.5);transform:scale(1.025);}
+.bk-c:active{transform:scale(.975)}
+.bk-c.bk-live{border-color:rgba(46,204,113,.5);animation:pulse 2s infinite;}
+.bk-c.bk-final-cup{border-color:var(--cup-glow);background:linear-gradient(160deg,rgba(201,168,76,.07) 0%,var(--surface2) 55%);}
+.bk-c.bk-tbd{opacity:.38;cursor:default;pointer-events:none;}
 
-/* ── VS ROW ── */
+/* card header */
+.bk-ch{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:4px 8px 3px;
+  background:var(--surface3);
+  border-bottom:1px solid rgba(70,73,79,.5);
+  flex-shrink:0;
+  min-height:20px;
+}
+.bk-glbl{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;color:var(--blue);font-weight:700;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bk-glbl.cup-lbl{color:var(--cup);}
+.bk-glbl.live-lbl{color:var(--win);}
+
+/* team rows */
+.bk-tr{
+  display:flex;align-items:center;gap:5px;
+  padding:0 7px;
+  flex:1;
+  border-bottom:1px solid rgba(70,73,79,.4);
+  min-height:0;overflow:hidden;
+}
+.bk-tr:last-of-type{border-bottom:none;}
+.bk-tr.bk-win .bk-nm{color:var(--win);}
+.bk-tr.bk-win .bk-wn{color:var(--win);}
+.bk-tr.bk-win img{filter:drop-shadow(0 0 3px rgba(46,204,113,.4));}
+.bk-tr img{width:22px;height:22px;object-fit:contain;flex-shrink:0;}
+.bk-sd{font-size:8px;color:var(--muted2);font-weight:700;min-width:10px;text-align:center;flex-shrink:0;}
+.bk-nm{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:.8px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bk-nm.tbd-nm{color:var(--muted2);font-size:12px;}
+.bk-wn{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--muted2);flex-shrink:0;min-width:16px;text-align:right;line-height:1;}
+
+/* card footer */
+.bk-cf{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:3px 7px 4px;
+  border-top:1px solid rgba(70,73,79,.5);
+  flex-shrink:0;
+  min-height:18px;
+  background:var(--surface3);
+}
+.bk-dt{font-size:8.5px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bk-tv{font-size:8px;color:var(--blue);font-weight:600;white-space:nowrap;flex-shrink:0;margin-left:4px;}
+.bk-won-lbl{font-size:8px;color:var(--win);font-weight:700;letter-spacing:.5px;}
+.bk-live-per{font-size:8px;color:var(--win);font-weight:700;display:flex;align-items:center;gap:3px;}
+.bk-live-per::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--win);animation:lp 1s infinite;flex-shrink:0;}
+
+/* ── DETAIL PANEL ── */
+.detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;position:relative;overflow:hidden;animation:fadeUp .25s ease;box-shadow:var(--shadow-md);margin-bottom:14px;}
+.detail-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--tc,var(--blue)) 0%,transparent 70%);}
+.detail-head{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.detail-head img{width:60px;height:60px;object-fit:contain;flex-shrink:0}
+.detail-head .ti h2{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2.5px;line-height:1.05;color:var(--text)}
+.detail-head .ti p{color:var(--muted);font-size:10px;letter-spacing:2.5px;text-transform:uppercase;margin-top:5px;font-weight:500}
+.detail-head .ti p span{color:var(--tc,var(--blue));background:var(--blue-lt);padding:1px 7px;border-radius:4px;border:1px solid var(--blue-glow);margin-left:5px;font-size:9px;}
+.games-grid{display:flex;flex-direction:column;gap:12px}
+.game-card{background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.game-tag{display:flex;align-items:center;gap:6px;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;font-weight:700;}
+.game-tag .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
 .vs-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .vs-row img{width:42px;height:42px;object-fit:contain;flex-shrink:0}
 .vs-row .opp{flex:1;min-width:0}
@@ -205,213 +209,62 @@ body::after{
 .ha-tag{font-size:9px;padding:2px 8px;border-radius:5px;letter-spacing:1px;text-transform:uppercase;font-weight:700;flex-shrink:0}
 .ha-home{background:rgba(26,110,245,.1);color:var(--blue);border:1px solid rgba(26,110,245,.25)}
 .ha-away{background:rgba(180,83,9,.08);color:var(--gold);border:1px solid rgba(180,83,9,.2)}
-
-/* ── SCORE ── */
-.score-block{
-  display:flex;align-items:center;
-  background:var(--surface3);border:1px solid var(--border2);
-  border-radius:10px;padding:12px 14px;margin-bottom:12px;
-  position:relative;overflow:hidden;
-}
+.score-block{display:flex;align-items:center;background:var(--surface3);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:12px;position:relative;overflow:hidden;}
 .score-block.wb::before,.score-block.lb::before{content:'';position:absolute;inset:0}
 .score-block.wb::before{background:linear-gradient(135deg,var(--win-bg) 0%,transparent 55%)}
 .score-block.lb::before{background:linear-gradient(135deg,var(--loss-bg) 0%,transparent 55%)}
 .sc-team{display:flex;flex-direction:column;align-items:center;flex:1;position:relative}
 .sc-team img{width:28px;height:28px;object-fit:contain;margin-bottom:3px}
 .sc-team .ab{font-size:9px;letter-spacing:1.5px;color:var(--muted);font-family:'Bebas Neue',sans-serif}
-.sc-num{font-family:'Bebas Neue',sans-serif;font-size:42px;line-height:1;position:relative}
-.sc-num.w{color:var(--win)}.sc-num.l{color:var(--loss)}.sc-num.tie{color:var(--muted)}
-.sc-sep{display:flex;flex-direction:column;align-items:center;padding:0 8px;position:relative}
+.sc-num{font-family:'Bebas Neue',sans-serif;font-size:42px;line-height:1;}
+.sc-num.w{color:var(--win)}.sc-num.l{color:var(--loss)}
+.sc-sep{display:flex;flex-direction:column;align-items:center;padding:0 8px;}
 .sc-sep span{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--muted2);line-height:1}
 .sc-per{font-size:8px;letter-spacing:1.5px;color:var(--muted2);text-transform:uppercase;margin-top:3px;text-align:center;white-space:nowrap}
-.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:5px;
-  font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:5px;font-size:9px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:10px;}
 .chip.w{background:var(--win-bg);color:var(--win);border:1px solid var(--win-border)}
 .chip.l{background:var(--loss-bg);color:var(--loss);border:1px solid var(--loss-border)}
-
-/* ── INFO ROWS ── */
 .divider{border:none;border-top:1px solid var(--border);margin:12px 0}
 .info-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:7px}
 .info-row:last-child{margin-bottom:0}
 .info-row strong{color:var(--text);font-weight:500}
-
-/* ── HIGHLIGHT BUTTON ── */
-.yt-btn{
-  display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-top:14px;
-  background:var(--yt-bg);border:1.5px solid var(--yt-border);border-radius:11px;
-  color:var(--yt);font-size:13px;font-weight:600;text-decoration:none;
-  transition:all .15s;font-family:'DM Sans',sans-serif;position:relative;overflow:hidden;
-  -webkit-tap-highlight-color:transparent;
-}
-.yt-btn::before{content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(204,0,0,.07),transparent);opacity:0;transition:opacity .2s}
+.yt-btn{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-top:14px;background:var(--yt-bg);border:1.5px solid var(--yt-border);border-radius:11px;color:var(--yt);font-size:13px;font-weight:600;text-decoration:none;transition:all .15s;font-family:'DM Sans',sans-serif;position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;}
+.yt-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(204,0,0,.07),transparent);opacity:0;transition:opacity .2s}
 .yt-btn:hover::before,.yt-btn:active::before{opacity:1}
 .yt-btn:active{transform:scale(.98)}
 .yt-btn.searching{animation:ytp 1.5s ease-in-out infinite}
-@keyframes ytp{0%,100%{opacity:.6}50%{opacity:1}}
 .yi{flex-shrink:0;width:22px;height:22px;background:#cc0000;border-radius:5px;display:flex;align-items:center;justify-content:center}
-.yt{flex:1;text-align:left;line-height:1.2}
-.yt small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
-.yb{background:rgba(204,0,0,.1);border:1px solid rgba(204,0,0,.2);border-radius:4px;
-  padding:2px 6px;font-size:9px;font-weight:700;color:var(--yt);letter-spacing:.5px;flex-shrink:0}
-.sub-link{
-  display:flex;align-items:center;justify-content:center;gap:6px;
-  width:100%;padding:9px 14px;margin-top:7px;
-  background:transparent;border:1px solid var(--border2);border-radius:10px;
-  color:var(--muted);font-size:12px;font-weight:500;text-decoration:none;
-  transition:all .15s;font-family:'DM Sans',sans-serif;
-  -webkit-tap-highlight-color:transparent;
-}
+.yt-lbl{flex:1;text-align:left;line-height:1.2}
+.yt-lbl small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
+.yb{background:rgba(204,0,0,.1);border:1px solid rgba(204,0,0,.2);border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;color:var(--yt);letter-spacing:.5px;flex-shrink:0}
+.sub-link{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:9px 14px;margin-top:7px;background:transparent;border:1px solid var(--border2);border-radius:10px;color:var(--muted);font-size:12px;font-weight:500;text-decoration:none;transition:all .15s;font-family:'DM Sans',sans-serif;-webkit-tap-highlight-color:transparent;}
 .sub-link:hover,.sub-link:active{background:var(--surface3);color:var(--text)}
-
-/* ── LIVE BADGE ── */
-.live-badge{
-  display:inline-flex;align-items:center;gap:5px;background:var(--win-bg);
-  border:1px solid var(--win-border);border-radius:6px;padding:3px 9px;
-  font-size:9px;letter-spacing:2px;color:var(--win);font-weight:700;
-  margin-bottom:12px;text-transform:uppercase;
-}
-.live-dot{width:5px;height:5px;border-radius:50%;background:var(--win);
-  animation:lp 1s ease-in-out infinite;display:inline-block}
-@keyframes lp{0%,100%{opacity:.3}50%{opacity:1}}
-
-/* ── LOADER ── */
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:var(--win-bg);border:1px solid var(--win-border);border-radius:6px;padding:3px 9px;font-size:9px;letter-spacing:2px;color:var(--win);font-weight:700;margin-bottom:12px;text-transform:uppercase;}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--win);animation:lp 1s ease-in-out infinite;display:inline-block}
 .loader{text-align:center;padding:44px 20px}
-.loader-spinner{width:28px;height:28px;border:2px solid var(--border2);
-  border-top-color:var(--blue);border-radius:50%;
-  animation:spin .7s linear infinite;margin:0 auto 14px}
-.loader h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;
-  color:var(--text);margin-bottom:5px}
+.loader-spinner{width:28px;height:28px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 14px}
+.loader h3{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--text);margin-bottom:5px}
 .loader p{color:var(--muted);font-size:10px;letter-spacing:2px;text-transform:uppercase}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── ERROR / MISC ── */
-.error-box{background:var(--loss-bg);border:1px solid var(--loss-border);
-  border-radius:10px;padding:14px 16px;margin-top:12px}
+.error-box{background:var(--loss-bg);border:1px solid var(--loss-border);border-radius:10px;padding:14px 16px;margin-top:12px}
 .error-box p{color:var(--loss);font-size:13px;line-height:1.6}
 .no-game{color:var(--muted);font-size:12px;padding:6px 0;line-height:1.7}
 .hidden{display:none}
-.retry-btn{
-  display:flex;align-items:center;justify-content:center;gap:7px;
-  width:100%;max-width:200px;padding:10px 18px;margin:14px auto 0;
-  background:var(--blue-lt);border:1.5px solid var(--blue);
-  border-radius:10px;color:var(--blue);font-size:13px;font-weight:600;
-  cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
-}
+.retry-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;max-width:200px;padding:10px 18px;margin:14px auto 0;background:var(--blue-lt);border:1.5px solid var(--blue);border-radius:10px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;}
 .retry-btn:hover,.retry-btn:active{background:var(--blue);color:#fff}
 
-/* ── NEWS CAROUSEL — big full-width tiles ── */
-.news-carousel-wrap{padding:12px 0 20px}
-.news-label{font-size:11px;letter-spacing:3px;text-transform:uppercase;
-  color:var(--text);font-weight:700;padding:0 12px 10px;opacity:.85;text-align:center}
-.news-strip{
-  display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;
-  padding:0 12px 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;
-  /* snap to each card */
-  scroll-snap-type:x mandatory;
-}
-.news-strip::-webkit-scrollbar{display:none}
-.news-card{
-  flex:0 0 calc(100vw - 40px);max-width:500px;
-  background:var(--surface);border:1px solid var(--border);
-  border-radius:16px;overflow:hidden;cursor:pointer;text-decoration:none;
-  display:flex;flex-direction:column;
-  scroll-snap-align:start;
-  -webkit-tap-highlight-color:transparent;
-  transition:transform .15s;
-}
-.news-card:active{transform:scale(.98)}
-.news-card-img{width:100%;height:180px;object-fit:cover;background:var(--surface2)}
-.news-card-body{padding:14px}
-.news-card-body h4{font-size:15px;font-weight:600;color:var(--text);line-height:1.4;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.news-blurb{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.news-card-body small{display:block;font-size:10px;color:var(--muted2);margin-top:8px;letter-spacing:.5px}
-.news-loading{color:var(--muted);font-size:12px;padding:8px 0}
-
-/* ── LIVE SCORE BLOCK (in Next Game when live) ── */
-.live-score-block{display:flex;align-items:center;
-  background:var(--surface3);border:1.5px solid var(--win-border);
-  border-radius:12px;padding:12px 14px;margin-bottom:12px;position:relative;overflow:hidden}
-.live-score-block::before{content:'';position:absolute;inset:0;
-  background:linear-gradient(135deg,var(--win-bg) 0%,transparent 60%)}
-.live-score-block .sc-num{font-family:'Bebas Neue',sans-serif;font-size:42px;
-  line-height:1;color:var(--text);position:relative}
-.live-period{font-size:9px;letter-spacing:1.5px;color:var(--win);
-  text-transform:uppercase;margin-top:3px;text-align:center;white-space:nowrap;font-weight:700}
-/* ── RESULTS SECTION ── */
-.results-section-label{
-  display:flex;align-items:center;gap:10px;
-  padding:16px 16px 10px;
-}
-.results-section-label::before,.results-section-label::after{
-  content:'';flex:1;height:1px;
-  background:linear-gradient(to right,transparent,rgba(255,255,255,.08));
-}
-.results-section-label::after{
-  background:linear-gradient(to left,transparent,rgba(255,255,255,.08));
-}
-.results-section-label span{
-  font-size:11px;letter-spacing:3px;text-transform:uppercase;
-  color:var(--text);font-weight:700;white-space:nowrap;opacity:.85;
-  flex-shrink:0;
-}
-
-/* Result card — full-width, one per snap */
-.result-card{
-  flex:0 0 calc(100vw - 56px);max-width:380px;
-  background:rgba(255,255,255,.04);
-  border:1px solid rgba(255,255,255,.07);
-  border-radius:12px;padding:10px 14px;
-  display:flex;align-items:center;justify-content:space-between;
-  text-decoration:none;-webkit-tap-highlight-color:transparent;
-  scroll-snap-align:start;transition:background .15s;gap:6px;
-  min-height:0;
-}
-.result-card:active{background:rgba(255,255,255,.08)}
-.result-card-team{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
-.result-card-team img{width:30px;height:30px;object-fit:contain;flex-shrink:0}
-.result-card-abbr{font-family:'Bebas Neue',sans-serif;font-size:13px;
-  letter-spacing:1.5px;color:var(--muted2)}
-.result-card-team.right{flex-direction:row-reverse;justify-content:flex-end}
-.result-card-score{font-family:'Bebas Neue',sans-serif;font-size:30px;
-  line-height:1;min-width:20px;text-align:center;flex-shrink:0}
-.result-card-score.w{color:var(--win)}.result-card-score.l{color:var(--loss)}
-.result-card-center{display:flex;flex-direction:column;align-items:center;
-  padding:0 6px;flex-shrink:0}
-.result-card-dash{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted2);line-height:1}
-.result-card-status{font-size:7px;letter-spacing:1.5px;text-transform:uppercase;
-  color:var(--muted2);margin-top:1px;white-space:nowrap}
-.results-empty{color:var(--muted2);font-size:11px;padding:8px 12px;opacity:.6}
-
-/* ── STANDINGS ── */
-.standings-wrap{padding:0 12px 28px}
-.standings-conf{margin-bottom:20px}
-.standings-conf-title{
-  font-size:10px;letter-spacing:3px;text-transform:uppercase;
-  color:var(--blue);font-weight:700;padding:0 0 8px;opacity:.9;
-}
-.standings-table{width:100%;border-collapse:collapse}
-.standings-table th{
-  font-size:8px;letter-spacing:1.5px;text-transform:uppercase;
-  color:var(--muted2);font-weight:600;padding:4px 6px;text-align:right;opacity:.6;
-}
-.standings-table th:first-child{text-align:left}
-.standings-table td{
-  font-size:12px;color:var(--muted);padding:7px 6px;
-  border-top:1px solid rgba(255,255,255,.04);text-align:right;
-  vertical-align:middle;
-}
-.standings-table td:first-child{text-align:left}
-.standings-td-team{display:flex;align-items:center;gap:7px}
-.standings-table td img{width:22px;height:22px;object-fit:contain;flex-shrink:0}
-.standings-team-name{font-size:12px;font-weight:500;color:var(--text);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
-.standings-rank{font-size:9px;color:var(--muted2);width:14px;
-  text-align:right;flex-shrink:0;font-family:'Bebas Neue',sans-serif}
-.standings-pts{font-weight:700;color:var(--text)}
-.standings-table tr.playoff-line td{border-top:1px solid rgba(106,171,223,.3)}
+/* ── NEWS ── */
+.news-section{margin-top:4px}
+.section-label{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);margin-left:4px;}
+.news-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.news-scroll::-webkit-scrollbar{display:none}
+.news-card{flex:0 0 210px;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;text-decoration:none;color:var(--text);transition:border-color .15s,box-shadow .15s;display:flex;flex-direction:column;-webkit-tap-highlight-color:transparent;}
+.news-card:hover{border-color:var(--border2);box-shadow:var(--shadow);}
+.news-thumb{width:100%;height:108px;object-fit:cover;display:block;background:var(--surface2);}
+.news-body{padding:10px 11px 12px;flex:1;display:flex;flex-direction:column;}
+.news-headline{font-size:12px;font-weight:600;color:var(--text);line-height:1.4;flex:1;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.news-meta{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted2);margin-top:8px;}
+.spin-sm{width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--cup);border-radius:50%;animation:spin .7s linear infinite;margin:24px auto;}
 
 </style>
 </head>
@@ -420,28 +273,15 @@ body::after{
 <div class="top-bar">
   <div class="header">
     <div class="header-title">
-      <div class="nhl-logo">
+      <div class="nhl-logo" onclick="resetPage()" title="Reset">
         <svg viewBox="0 0 60 70" xmlns="http://www.w3.org/2000/svg" width="56" height="56">
           <defs>
-            <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stop-color="#c8d0dc"/>
-              <stop offset="50%" stop-color="#8a9ab0"/>
-              <stop offset="100%" stop-color="#4a5568"/>
-            </linearGradient>
-            <linearGradient id="innerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#1a2a4a"/>
-              <stop offset="100%" stop-color="#0d1829"/>
-            </linearGradient>
+            <linearGradient id="sg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#c8d0dc"/><stop offset="50%" stop-color="#8a9ab0"/><stop offset="100%" stop-color="#4a5568"/></linearGradient>
+            <linearGradient id="ig" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1a2a4a"/><stop offset="100%" stop-color="#0d1829"/></linearGradient>
           </defs>
-          <!-- Outer shield -->
-          <path d="M30 2 L56 12 L56 38 C56 54 30 68 30 68 C30 68 4 54 4 38 L4 12 Z"
-            fill="url(#shieldGrad)" stroke="#b0bcc8" stroke-width="1"/>
-          <!-- Inner shield -->
-          <path d="M30 7 L51 16 L51 38 C51 51 30 63 30 63 C30 63 9 51 9 38 L9 16 Z"
-            fill="url(#innerGrad)"/>
-          <!-- NHL text -->
-          <text x="30" y="42" text-anchor="middle" font-family="Arial Black,sans-serif"
-            font-size="18" font-weight="900" fill="#c8d4e8" letter-spacing="1">NHL</text>
+          <path d="M30 2 L56 12 L56 38 C56 54 30 68 30 68 C30 68 4 54 4 38 L4 12 Z" fill="url(#sg)" stroke="#b0bcc8" stroke-width="1"/>
+          <path d="M30 7 L51 16 L51 38 C51 51 30 63 30 63 C30 63 9 51 9 38 L9 16 Z" fill="url(#ig)"/>
+          <text x="30" y="42" text-anchor="middle" font-family="Arial Black,sans-serif" font-size="18" font-weight="900" fill="#c8d4e8" letter-spacing="1">NHL</text>
         </svg>
       </div>
       <h1>NHL <span>TRACKER</span></h1>
@@ -453,756 +293,751 @@ body::after{
 </div>
 
 <div class="detail-wrap">
-  <div id="newsCarousel" class="news-carousel-wrap">
-    <div class="news-label">NHL TOP STORIES</div>
-    <div class="news-strip" id="newsStrip"><div class="news-loading">Loading stories…</div></div>
-    <div class="results-section-label"><span>Last 24 Hours · Results</span></div>
-    <div class="news-strip" id="resultsStrip" style="padding-bottom:12px"><div class="news-loading">Loading results…</div></div>
-    <div class="results-section-label"><span>League Standings</span></div>
-    <div id="standingsWrap" class="standings-wrap"><div class="news-loading">Loading standings…</div></div>
+  <!-- PLAYOFF BRACKET -->
+  <div class="pb-tile">
+    <div class="pb-hdr" onclick="toggleBracket()">
+      <div class="pb-trophy">🏆</div>
+      <div class="pb-ttl">
+        <h2>Stanley Cup Playoffs</h2>
+        <p id="pbSeason">2025–26 Season Bracket</p>
+      </div>
+      <div class="pb-badge loading" id="pbBadge">Loading</div>
+      <div class="pb-chev open" id="pbChev">▾</div>
+    </div>
+    <!-- Nav buttons sit OUTSIDE pb-body so overflow:hidden on pb-body never clips them -->
+    <div class="bk-hdr-row" id="bkHdrRow" style="display:none;">
+      <div class="bk-conf-pill west" onclick="scrollBracket('west')" title="Scroll to Western Conference"><span class="bk-conf-arr">◀</span><span class="bk-conf-dot"></span>WESTERN</div>
+      <div class="bk-scf-pill">🏆 STANLEY CUP FINAL</div>
+      <div class="bk-conf-pill east" onclick="scrollBracket('east')" title="Scroll to Eastern Conference">EASTERN<span class="bk-conf-dot"></span><span class="bk-conf-arr">▶</span></div>
+    </div>
+    <div class="pb-body open" id="pbBody">
+      <div class="pb-scroll" id="pbScroll">
+        <div class="bk-outer">
+          <div class="bk-wrap" id="bkWrap" style="height:70px;display:flex;align-items:center;justify-content:center;">
+            <div style="width:22px;height:22px;border:2px solid var(--border2);border-top-color:var(--cup);border-radius:50%;animation:spin .7s linear infinite;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- TEAM DETAIL -->
   <div id="detailPanel" class="hidden"></div>
+
+  <!-- NEWS -->
+  <div class="news-section">
+    <div class="section-label">📰 NHL Top Stories</div>
+    <div id="newsGrid"><div class="spin-sm"></div></div>
+  </div>
 </div>
 
 <script>
-/* ══════════════════════════════════════════════════════════════════
-   DATA: ESPN public API — same source powering Google Sports panels
-   Direct fetch · CORS-open · No proxy · ~200ms · Full season data
-══════════════════════════════════════════════════════════════════ */
-
-const TEAMS = [
-  {a:"ANA",c:"Anaheim",      n:"Ducks",          color:"#F47A38"},
-  {a:"BOS",c:"Boston",       n:"Bruins",          color:"#FFB81C"},
-  {a:"BUF",c:"Buffalo",      n:"Sabres",          color:"#4189c7"},
-  {a:"CGY",c:"Calgary",      n:"Flames",          color:"#C8102E"},
-  {a:"CAR",c:"Carolina",     n:"Hurricanes",      color:"#CC0000"},
-  {a:"CHI",c:"Chicago",      n:"Blackhawks",      color:"#CF0A2C"},
-  {a:"COL",c:"Colorado",     n:"Avalanche",       color:"#8B6FAE"},
-  {a:"CBJ",c:"Columbus",     n:"Blue Jackets",    color:"#5A8AC6"},
-  {a:"DAL",c:"Dallas",       n:"Stars",           color:"#00843D"},
-  {a:"DET",c:"Detroit",      n:"Red Wings",       color:"#CE1126"},
-  {a:"EDM",c:"Edmonton",     n:"Oilers",          color:"#FF6B35"},
-  {a:"FLA",c:"Florida",      n:"Panthers",        color:"#C8102E"},
-  {a:"LAK",c:"Los Angeles",  n:"Kings",           color:"#a2a2a5"},
-  {a:"MIN",c:"Minnesota",    n:"Wild",            color:"#2E7D32"},
-  {a:"MTL",c:"Montréal",     n:"Canadiens",       color:"#AF1E2D"},
-  {a:"NSH",c:"Nashville",    n:"Predators",       color:"#FFB81C"},
-  {a:"NJD",c:"New Jersey",   n:"Devils",          color:"#CE1126"},
-  {a:"NYI",c:"NY Islanders", n:"Islanders",       color:"#FC4C02"},
-  {a:"NYR",c:"NY Rangers",   n:"Rangers",         color:"#0054A4"},
-  {a:"OTT",c:"Ottawa",       n:"Senators",        color:"#E3141C"},
-  {a:"PHI",c:"Philadelphia", n:"Flyers",          color:"#F74902"},
-  {a:"PIT",c:"Pittsburgh",   n:"Penguins",        color:"#FCB514"},
-  {a:"SJS",c:"San Jose",     n:"Sharks",          color:"#20B2AA"},
-  {a:"SEA",c:"Seattle",      n:"Kraken",          color:"#3CBFE0"},
-  {a:"STL",c:"St. Louis",    n:"Blues",           color:"#2563EB"},
-  {a:"TBL",c:"Tampa Bay",    n:"Lightning",       color:"#5B8FD4"},
-  {a:"TOR",c:"Toronto",      n:"Maple Leafs",     color:"#4189c7"},
-  {a:"UTA",c:"Utah",         n:"Mammoth",         color:"#4B92DB"},
-  {a:"VAN",c:"Vancouver",    n:"Canucks",         color:"#00843D"},
-  {a:"VGK",c:"Vegas",        n:"Golden Knights",  color:"#B4975A"},
-  {a:"WSH",c:"Washington",   n:"Capitals",        color:"#C8102E"},
-  {a:"WPG",c:"Winnipeg",     n:"Jets",            color:"#4B6EAF"},
+/* ════════ CONFIG ════════ */
+const TEAMS=[
+  {a:"ANA",c:"Anaheim",n:"Ducks",color:"#F47A38"},{a:"BOS",c:"Boston",n:"Bruins",color:"#FFB81C"},
+  {a:"BUF",c:"Buffalo",n:"Sabres",color:"#4189c7"},{a:"CGY",c:"Calgary",n:"Flames",color:"#C8102E"},
+  {a:"CAR",c:"Carolina",n:"Hurricanes",color:"#CC0000"},{a:"CHI",c:"Chicago",n:"Blackhawks",color:"#CF0A2C"},
+  {a:"COL",c:"Colorado",n:"Avalanche",color:"#8B6FAE"},{a:"CBJ",c:"Columbus",n:"Blue Jackets",color:"#5A8AC6"},
+  {a:"DAL",c:"Dallas",n:"Stars",color:"#00843D"},{a:"DET",c:"Detroit",n:"Red Wings",color:"#CE1126"},
+  {a:"EDM",c:"Edmonton",n:"Oilers",color:"#FF6B35"},{a:"FLA",c:"Florida",n:"Panthers",color:"#C8102E"},
+  {a:"LAK",c:"Los Angeles",n:"Kings",color:"#a2a2a5"},{a:"MIN",c:"Minnesota",n:"Wild",color:"#2E7D32"},
+  {a:"MTL",c:"Montréal",n:"Canadiens",color:"#AF1E2D"},{a:"NSH",c:"Nashville",n:"Predators",color:"#FFB81C"},
+  {a:"NJD",c:"New Jersey",n:"Devils",color:"#CE1126"},{a:"NYI",c:"NY Islanders",n:"Islanders",color:"#FC4C02"},
+  {a:"NYR",c:"NY Rangers",n:"Rangers",color:"#0054A4"},{a:"OTT",c:"Ottawa",n:"Senators",color:"#E3141C"},
+  {a:"PHI",c:"Philadelphia",n:"Flyers",color:"#F74902"},{a:"PIT",c:"Pittsburgh",n:"Penguins",color:"#FCB514"},
+  {a:"SJS",c:"San Jose",n:"Sharks",color:"#20B2AA"},{a:"SEA",c:"Seattle",n:"Kraken",color:"#3CBFE0"},
+  {a:"STL",c:"St. Louis",n:"Blues",color:"#2563EB"},{a:"TBL",c:"Tampa Bay",n:"Lightning",color:"#5B8FD4"},
+  {a:"TOR",c:"Toronto",n:"Maple Leafs",color:"#4189c7"},{a:"UTA",c:"Utah",n:"Mammoth",color:"#4B92DB"},
+  {a:"VAN",c:"Vancouver",n:"Canucks",color:"#00843D"},{a:"VGK",c:"Vegas",n:"Golden Knights",color:"#B4975A"},
+  {a:"WSH",c:"Washington",n:"Capitals",color:"#C8102E"},{a:"WPG",c:"Winnipeg",n:"Jets",color:"#4B6EAF"},
 ];
+const EASTERN=new Set(['BOS','BUF','CAR','CBJ','DET','FLA','MTL','NJD','NYI','NYR','OTT','PHI','PIT','TBL','TOR','WSH']);
+const WESTERN=new Set(['ANA','CGY','CHI','COL','DAL','EDM','LAK','MIN','NSH','SEA','SJS','STL','UTA','VAN','VGK','WPG']);
+const YT_NICK={ANA:'Ducks',BOS:'Bruins',BUF:'Sabres',CGY:'Flames',CAR:'Hurricanes',CHI:'Blackhawks',COL:'Avalanche',CBJ:'Blue Jackets',DAL:'Stars',DET:'Red Wings',EDM:'Oilers',FLA:'Panthers',LAK:'Kings',MIN:'Wild',MTL:'Canadiens',NSH:'Predators',NJD:'Devils',NYI:'Islanders',NYR:'Rangers',OTT:'Senators',PHI:'Flyers',PIT:'Penguins',SJS:'Sharks',SEA:'Kraken',STL:'Blues',TBL:'Lightning',TOR:'Maple Leafs',UTA:'Mammoth',VAN:'Canucks',VGK:'Golden Knights',WSH:'Capitals',WPG:'Jets'};
+const YT_CH='UCqFMzb-4AUf6WAIbl132QKA';
+const ET='America/New_York';
 
-// ESPN uses different abbreviations from NHL (e.g. TB vs TBL, NJ vs NJD).
-// We resolve logos correctly by building a two-way map from the API response.
-let espnIdMap  = {};   // our NHL abbr → ESPN numeric id
-let espnToNHL  = {};   // ESPN abbr    → our NHL abbr
+let espnIdMap={},espnToNHL={};
+const nhlLogo=a=>`https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
+const espnLogo=a=>`https://a.espncdn.com/i/teamlogos/nhl/500/${(a||'nhl').toLowerCase()}.png`;
+const logoFor=e=>nhlLogo(espnToNHL[e]||e);
+const teamNick=a=>{const t=TEAMS.find(x=>x.a===a);return t?t.n:a;};
 
-const nhlLogo  = a => `https://assets.nhle.com/logos/nhl/svg/${a}_light.svg`;
-const espnLogo = a => `https://a.espncdn.com/i/teamlogos/nhl/500/${(a||'nhl').toLowerCase()}.png`;
-function logoFor(espnAbbr) {
-  const our = espnToNHL[espnAbbr] || espnAbbr;
-  return nhlLogo(our);
-}
-
-// Fetch ESPN team list immediately in background — done before user clicks anything
-const espnReady = fetch(
-  'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',
-  { signal: AbortSignal.timeout(8000) }
-).then(r => r.json()).then(data => {
-  for (const { team: e } of data.sports[0].leagues[0].teams) {
-    const match = TEAMS.find(t => t.n.toLowerCase() === (e.name||'').toLowerCase())
-               || TEAMS.find(t => (e.displayName||'').toLowerCase().includes(t.n.toLowerCase()));
-    if (match) {
-      espnIdMap[match.a]       = e.id;
-      espnToNHL[e.abbreviation] = match.a;
+const espnReady=fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',{signal:AbortSignal.timeout(8000)})
+  .then(r=>r.json()).then(d=>{
+    for(const{team:e}of d.sports[0].leagues[0].teams){
+      const m=TEAMS.find(t=>t.n.toLowerCase()===(e.name||'').toLowerCase())||TEAMS.find(t=>(e.displayName||'').toLowerCase().includes(t.n.toLowerCase()));
+      if(m){espnIdMap[m.a]=e.id;espnToNHL[e.abbreviation]=m.a;}
     }
-  }
-}).catch(e => console.warn('ESPN init:', e.message));
+  }).catch(e=>console.warn(e));
 
-// Score parser — ESPN returns score as string, number, or {value, displayValue}
-function parseScore(s) {
-  if (s == null) return null;
-  if (typeof s === 'number') return s;
-  if (typeof s === 'string') { const n = parseInt(s,10); return isNaN(n)?null:n; }
-  if (typeof s === 'object') { const v = s.value??parseInt(s.displayValue,10); return isNaN(v)?null:v; }
+function parseScore(s){
+  if(s==null)return null;if(typeof s==='number')return s;
+  if(typeof s==='string'){const n=parseInt(s,10);return isNaN(n)?null:n;}
+  if(typeof s==='object'){const v=s.value??parseInt(s.displayValue,10);return isNaN(v)?null:v;}
   return null;
 }
-
-// Date formatter — ET for game-night dates (matches NHL titles)
-const ET = 'America/New_York';
-function fmtDate(s) {
-  const d = new Date(s);
-  return {
-    date:      d.toLocaleDateString('en-US',{timeZone:ET,weekday:'short',month:'short',day:'numeric',year:'numeric'}),
-    time:      d.toLocaleTimeString('en-US',{timeZone:ET,hour:'numeric',minute:'2-digit',timeZoneName:'short'}),
-    localTime: d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',timeZoneName:'short'}),
+function fmtDate(s){
+  const d=new Date(s);
+  return{
+    date:d.toLocaleDateString('en-US',{timeZone:ET,weekday:'short',month:'short',day:'numeric',year:'numeric'}),
+    localTime:d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',timeZoneName:'short'}),
+    short:d.toLocaleDateString('en-US',{timeZone:ET,month:'short',day:'numeric'}),
+    shortTime:d.toLocaleTimeString('en-US',{timeZone:ET,hour:'numeric',minute:'2-digit'}),
+    parts:new Intl.DateTimeFormat('en-US',{timeZone:ET,month:'long',day:'2-digit',year:'numeric'}).formatToParts(d),
   };
 }
 
-// ── UI ────────────────────────────────────────────────────────────
-const grid  = document.getElementById('teamsGrid');
-const panel = document.getElementById('detailPanel');
-let loadToken = 0;
-let livePoller = null;
-
-// ── Web Audio ─────────────────────────────────────────────────────
-let audioCtx = null;
-
-function ensureAudio() {
-  if (audioCtx) return;
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    // silent unlock buffer
-    const b = audioCtx.createBuffer(1,1,audioCtx.sampleRate);
-    const s = audioCtx.createBufferSource();
-    s.buffer = b; s.connect(audioCtx.destination); s.start(0);
-  } catch(e) {}
+/* ════════ TEAM STRIP ════════ */
+const grid=document.getElementById('teamsGrid'),panel=document.getElementById('detailPanel');
+let loadToken=0;
+const actx=new(window.AudioContext||window.webkitAudioContext)();
+function playTick(){
+  try{
+    const buf=actx.createBuffer(1,actx.sampleRate*.06,actx.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(actx.sampleRate*.008));
+    const s=actx.createBufferSource(),g=actx.createGain();
+    s.buffer=buf;g.gain.setValueAtTime(.18,actx.currentTime);
+    s.connect(g);g.connect(actx.destination);s.start();
+  }catch(e){}
 }
-
-function playTick() {
-  if (!audioCtx) return;
-  try {
-    const buf  = audioCtx.createBuffer(1, audioCtx.sampleRate*0.06, audioCtx.sampleRate);
-    const data = buf.getChannelData(0);
-    for (let i=0;i<data.length;i++)
-      data[i] = (Math.random()*2-1)*Math.exp(-i/(audioCtx.sampleRate*0.008));
-    const src=audioCtx.createBufferSource(), gain=audioCtx.createGain();
-    src.buffer=buf; gain.gain.setValueAtTime(0.18,audioCtx.currentTime);
-    src.connect(gain); gain.connect(audioCtx.destination); src.start();
-  } catch(e) {}
-}
-
-function playScrollTick() {
-  if (!audioCtx) return;
-  try {
-    const osc=audioCtx.createOscillator(), gain=audioCtx.createGain();
-    osc.type='sine';
-    osc.frequency.setValueAtTime(1100+Math.random()*400, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.07, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.04);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime+0.04);
-  } catch(e) {}
-}
-
-TEAMS.forEach(t => {
-  const btn = document.createElement('button');
-  btn.className='team-btn'; btn.id='btn-'+t.a;
-  btn.style.setProperty('--tc', t.color);
+TEAMS.forEach(t=>{
+  const btn=document.createElement('button');
+  btn.className='team-btn';btn.id='btn-'+t.a;btn.style.setProperty('--tc',t.color);
   btn.innerHTML=`<img src="${nhlLogo(t.a)}" alt="${t.n}" onerror="this.src='${espnLogo(t.a)}'"><span>${t.a}</span>`;
-  btn.addEventListener('click', ()=>{ playTick(); selectTeam(t); });
+  btn.addEventListener('click',()=>{playTick();selectTeam(t);});
   grid.appendChild(btn);
 });
+grid.addEventListener('scroll',(()=>{
+  let lx=0,tk=false;
+  return function(){if(tk)return;tk=true;requestAnimationFrame(()=>{
+    const dx=Math.abs(grid.scrollLeft-lx);
+    if(dx>18){lx=grid.scrollLeft;
+      try{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.setValueAtTime(1200+Math.random()*300,actx.currentTime);g.gain.setValueAtTime(.06,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+.04);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.04);}catch(e){}
+    }tk=false;
+  });};
+})());
 
-// ── Scroll sound via touchmove (fires DURING active gesture) ──────
-// touchstart on the strip → creates AudioContext (running state immediately)
-// touchmove → plays tick (still inside gesture, context guaranteed running)
-grid.addEventListener('touchstart', e => {
-  ensureAudio();
-}, { passive: true });
-
-grid.addEventListener('touchmove', (() => {
-  let lastX = null, lastTick = 0;
-  return e => {
-    if (!audioCtx) return;
-    const x = e.touches[0].clientX;
-    if (lastX === null) { lastX = x; return; }
-    const dx = Math.abs(x - lastX);
-    const now = Date.now();
-    if (dx > 6 && now - lastTick > 80) {
-      lastX = x; lastTick = now;
-      playScrollTick();
-    }
-  };
-})(), { passive: true });
-
-// ── NHL logo = reset button ────────────────────────────────────────
-document.querySelector('.nhl-logo').style.cursor = 'pointer';
-document.querySelector('.nhl-logo').addEventListener('click', resetToNews);
-
-function resetToNews() {
-  if (livePoller) { clearInterval(livePoller); livePoller=null; }
-  ++loadToken;
+function resetPage(){
   document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('active'));
-  panel.className='hidden'; panel.innerHTML='';
-  document.getElementById('newsCarousel').classList.remove('hidden');
+  const p=document.getElementById('detailPanel');
+  p.className='hidden';p.innerHTML='';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function selectTeam(t) {
-  if (livePoller) { clearInterval(livePoller); livePoller=null; }
+function selectTeam(t){
   document.querySelectorAll('.team-btn').forEach(b=>b.classList.remove('active'));
-  const ab=document.getElementById('btn-'+t.a);
-  ab.classList.add('active');
+  const ab=document.getElementById('btn-'+t.a);ab.classList.add('active');
   ab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-  document.getElementById('newsCarousel').classList.add('hidden');
   const tok=++loadToken;
-  panel.className='detail-panel';
-  panel.style.setProperty('--tc',t.color);
+  panel.className='detail-panel';panel.style.setProperty('--tc',t.color);
   panel.innerHTML=`<div class="loader"><div class="loader-spinner"></div><h3>${t.n}</h3><p id="ls">Connecting to ESPN…</p></div>`;
   setTimeout(()=>{
-    const tb=document.querySelector('.top-bar');
-    const off=tb?tb.offsetHeight:0;
+    const tb=document.querySelector('.top-bar'),off=tb?tb.offsetHeight:0;
     window.scrollTo({top:panel.getBoundingClientRect().top+window.scrollY-off-8,behavior:'smooth'});
   },50);
   loadTeam(t,tok);
 }
+function step(m){const el=document.getElementById('ls');if(el)el.textContent=m;}
 
-// ── NHL News — to-rss.xyz scrapes NHL.com, ESPN as fallback ──────
-(async () => {
-  const strip = document.getElementById('newsStrip');
-
-  function parseRSS(xmlText) {
-    const xml   = new DOMParser().parseFromString(xmlText, 'text/xml');
-    const items = Array.from(xml.querySelectorAll('item')).slice(0, 10);
-    if (!items.length) throw new Error('empty');
-    return items.map(item => {
-      const title   = item.querySelector('title')?.textContent || '';
-      const link    = item.querySelector('link')?.textContent?.trim()
-                   || item.querySelector('guid')?.textContent?.trim()
-                   || 'https://www.nhl.com/news';
-      const desc    = item.querySelector('description')?.textContent || '';
-      const blurb   = desc.replace(/<[^>]*>/g,'')
-                         .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
-                         .trim().slice(0, 130);
-      const media   = item.querySelector('content[url]')
-                   || item.querySelector('enclosure[url]')
-                   || item.querySelector('thumbnail');
-      const img     = media?.getAttribute('url') || '';
-      const pubDate = item.querySelector('pubDate')?.textContent || '';
-      const date    = pubDate
-        ? new Date(pubDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
-        : '';
-      return `<a class="news-card" href="${link}" target="_blank" rel="noopener">
-        ${img ? `<img class="news-card-img" src="${img}" alt="" loading="lazy" onerror="this.style.display='none'">` : ''}
-        <div class="news-card-body">
-          <h4>${title}</h4>
-          ${blurb ? `<p class="news-blurb">${blurb}</p>` : ''}
-          <small>${date}</small>
-        </div>
-      </a>`;
-    }).join('');
-  }
-
-  // Race NHL RSS (scraped) vs ESPN simultaneously — first to succeed wins
-  const nhlRSS = 'https://www.to-rss.xyz/nhl/';
-  const espnNews = fetch(
-    'https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/news?limit=10',
-    { signal: AbortSignal.timeout(6000) }
-  ).then(r=>r.json()).then(d=>{
-    const articles = d.articles||[];
-    if (!articles.length) throw new Error('empty');
-    return articles.map(a => {
-      const img   = a.images?.[0]?.url||'';
-      const title = a.headline||'';
-      const blurb = (a.description||'').slice(0,130);
-      const date  = a.published ? new Date(a.published).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-      const link  = a.links?.web?.href||'https://www.nhl.com/news';
-      return `<a class="news-card" href="${link}" target="_blank" rel="noopener">
-        ${img?`<img class="news-card-img" src="${img}" alt="" loading="lazy" onerror="this.style.display='none'">` :''}
-        <div class="news-card-body"><h4>${title}</h4>${blurb?`<p class="news-blurb">${blurb}</p>`:''}<small>${date}</small></div>
-      </a>`;
-    }).join('');
-  });
-
-  const nhlRssNews = Promise.any([
-    fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(nhlRSS)}`,
-      { signal: AbortSignal.timeout(8000) }).then(r=>r.json()).then(d=>parseRSS(d.contents||'')),
-    fetch(`https://corsproxy.io/?url=${encodeURIComponent(nhlRSS)}`,
-      { signal: AbortSignal.timeout(8000) }).then(r=>{ if(!r.ok) throw 0; return r.text(); }).then(parseRSS),
-  ]);
-
-  try {
-    strip.innerHTML = await Promise.any([nhlRssNews, espnNews]);
-  } catch(e) {
-    strip.innerHTML = '<p class="news-loading">Could not load NHL news.</p>';
-  }
-})();
-
-// ── Last 24hr Results ─────────────────────────────────────────────
-function step(m) { const el=document.getElementById('ls'); if(el) el.textContent=m; }
-(async () => {
-  const wrap = document.getElementById('resultsWrap');
-  try {
-    // ESPN scoreboard — fetch yesterday and today to cover rolling 24hrs
-    const etNow  = new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-    const pad    = n => String(n).padStart(2,'0');
-    const toDate = d => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-    const today  = toDate(etNow);
-    const yest   = toDate(new Date(etNow - 86400000));
-
-    const fetchDay = async (dateStr) => {
-      const r = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?dates=${dateStr}`,
-        { signal: AbortSignal.timeout(7000) }
-      );
-      const d = await r.json();
-      return d.events || [];
-    };
-
-    const [evToday, evYest] = await Promise.all([fetchDay(today), fetchDay(yest)]);
-    const cutoff = Date.now() - 24 * 3600 * 1000;
-
-    const allEvents = [...evToday, ...evYest]
-      .filter(ev => {
-        const comp = ev.competitions?.[0];
-        return comp?.status?.type?.completed && new Date(ev.date).getTime() >= cutoff;
-      })
-      .sort((a,b) => new Date(b.date) - new Date(a.date));
-
-    if (!allEvents.length) {
-      document.getElementById('resultsStrip').innerHTML = '<p class="results-empty">No completed games in the last 24 hours.</p>';
-      return;
-    }
-
-    document.getElementById('resultsStrip').innerHTML = allEvents.map(ev => {
-      const comp     = ev.competitions[0];
-      const home     = comp.competitors.find(c => c.homeAway === 'home');
-      const away     = comp.competitors.find(c => c.homeAway === 'away');
-      const homeS    = parseInt(home?.score, 10) || 0;
-      const awayS    = parseInt(away?.score, 10) || 0;
-      const homeW    = homeS > awayS;
-      const status   = comp.status?.type?.shortDetail || comp.status?.type?.description || 'Final';
-      const homeAbbr = home?.team?.abbreviation || '';
-      const awayAbbr = away?.team?.abbreviation || '';
-      const homeLogo = logoFor(homeAbbr) || espnLogo(homeAbbr);
-      const awayLogo = logoFor(awayAbbr) || espnLogo(awayAbbr);
-      const gameLink = `https://www.espn.com/nhl/game/_/gameId/${ev.id}`;
-
-      return `<a class="result-card" href="${gameLink}" target="_blank" rel="noopener">
-        <div class="result-card-team">
-          <img src="${awayLogo}" onerror="this.src='${espnLogo(awayAbbr)}'">
-          <span class="result-card-abbr">${awayAbbr}</span>
-        </div>
-        <span class="result-card-score ${!homeW?'w':'l'}">${awayS}</span>
-        <div class="result-card-center">
-          <span class="result-card-dash">–</span>
-          <span class="result-card-status">${status}</span>
-        </div>
-        <span class="result-card-score ${homeW?'w':'l'}">${homeS}</span>
-        <div class="result-card-team right">
-          <img src="${homeLogo}" onerror="this.src='${espnLogo(homeAbbr)}'">
-          <span class="result-card-abbr">${homeAbbr}</span>
-        </div>
-      </a>`;
-    }).join('');
-
-  } catch(e) {
-    document.getElementById('resultsStrip').innerHTML = '<p class="results-empty">Could not load results.</p>';
-  }
-})();
-
-// ── League Standings — ESPN CORS-open API ────────────────────────
-(async () => {
-  const wrap = document.getElementById('standingsWrap');
-  try {
-    // ESPN's v2 standings — same domain as all our other working calls
-    const r = await fetch(
-      'https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=2026&type=0&level=3',
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const d = await r.json();
-
-    // Walk the children tree: league → conferences → divisions → teams
-    const groups = [];
-    const walk = (node) => {
-      if (node.standings?.entries?.length) {
-        groups.push({ name: node.name || node.abbreviation || '', entries: node.standings.entries });
-      }
-      if (node.children) node.children.forEach(walk);
-    };
-    walk(d);
-
-    if (!groups.length) throw new Error('no groups');
-
-    const getStat = (stats, name) =>
-      stats?.find(s => s.name === name || s.shortDisplayName === name)?.displayValue
-      ?? stats?.find(s => s.name === name || s.shortDisplayName === name)?.value
-      ?? '–';
-
-    wrap.innerHTML = groups.map(g => {
-      const rows = g.entries.map((entry, i) => {
-        const team  = entry.team;
-        const abbr  = team.abbreviation || '';
-        const name  = team.shortDisplayName || team.displayName || abbr;
-        const stats = entry.stats || [];
-        const w   = getStat(stats, 'wins');
-        const l   = getStat(stats, 'losses');
-        const otl = getStat(stats, 'otLosses') !== '–' ? getStat(stats, 'otLosses') : getStat(stats, 'OTL');
-        const pts = getStat(stats, 'points');
-        return `<tr class="${i===3?'playoff-line':''}">
-          <td><div class="standings-td-team">
-            <span class="standings-rank">${i+1}</span>
-            <img src="${logoFor(abbr)}" onerror="this.src='${espnLogo(abbr)}'">
-            <span class="standings-team-name">${name}</span>
-          </div></td>
-          <td>${w}</td><td>${l}</td><td>${otl}</td>
-          <td class="standings-pts">${pts}</td>
-        </tr>`;
-      }).join('');
-      return `<div class="standings-conf">
-        <div class="standings-conf-title">${g.name}</div>
-        <table class="standings-table">
-          <thead><tr><th>Team</th><th>W</th><th>L</th><th>OTL</th><th>PTS</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-    }).join('');
-
-  } catch(e) {
-    console.warn('Standings failed:', e.message);
-    wrap.innerHTML = '<p class="results-empty">Could not load standings.</p>';
-  }
-})();
-
-// ── Live score updater ────────────────────────────────────────────
-function startLivePoller(espnId, myId, tok) {
-  if (livePoller) clearInterval(livePoller);
-  livePoller = setInterval(async () => {
-    if (tok !== loadToken) { clearInterval(livePoller); return; }
-    try {
-      const r = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${espnId}/schedule`,
-        { signal: AbortSignal.timeout(6000) }
-      );
-      const d = await r.json();
-      const liveEv = (d.events||[]).find(ev => ev.competitions?.[0]?.status?.type?.state === 'in');
-      if (!liveEv) { clearInterval(livePoller); return; }
-      const comp   = liveEv.competitions[0];
-      const mine   = comp.competitors.find(c => String(c.team.id) === myId);
-      const opp    = comp.competitors.find(c => String(c.team.id) !== myId);
-      const myS    = parseScore(mine?.score) ?? '–';
-      const oppS   = parseScore(opp?.score)  ?? '–';
-      const detail = comp.status?.type?.detail || 'LIVE';
-      const block  = document.getElementById('liveScoreBlock');
-      if (!block) { clearInterval(livePoller); return; }
-      block.querySelector('.live-my-score').textContent  = myS;
-      block.querySelector('.live-opp-score').textContent = oppS;
-      block.querySelector('.live-period').textContent    = detail;
-    } catch(e) {}
-  }, 30000); // refresh every 30s
-}
-async function loadTeam(t, tok) {
-  try {
-    await espnReady;                       // already resolved, instant
-    if (tok !== loadToken) return;
-
-    // If init failed (rare), try building the map now
-    if (!espnIdMap[t.a]) {
+async function loadTeam(t,tok){
+  try{
+    await espnReady;if(tok!==loadToken)return;
+    if(!espnIdMap[t.a]){
       step('Looking up team…');
-      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',
-        {signal:AbortSignal.timeout(8000)});
-      const d = await r.json();
-      for (const {team:e} of d.sports[0].leagues[0].teams) {
-        const m = TEAMS.find(x => x.n.toLowerCase()===(e.name||'').toLowerCase());
-        if (m) { espnIdMap[m.a]=e.id; espnToNHL[e.abbreviation]=m.a; }
-      }
+      const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();
+      for(const{team:e}of d.sports[0].leagues[0].teams){const m=TEAMS.find(x=>x.n.toLowerCase()===(e.name||'').toLowerCase());if(m){espnIdMap[m.a]=e.id;espnToNHL[e.abbreviation]=m.a;}}
     }
-    if (tok !== loadToken) return;
-
-    const eid = espnIdMap[t.a];
-    if (!eid) throw new Error(`ESPN has no record for ${t.a}. The team list may not have loaded — try again.`);
-
+    if(tok!==loadToken)return;
+    const eid=espnIdMap[t.a];if(!eid)throw new Error(`No ESPN record for ${t.a}.`);
     step('Fetching schedule…');
-
-    const r = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${eid}/schedule`,
-      {signal:AbortSignal.timeout(8000)}
-    );
-    if (!r.ok) throw new Error(`ESPN returned HTTP ${r.status}`);
-    const data = await r.json();
-    if (tok !== loadToken) return;
-
-    const past=[], future=[];
-    for (const ev of (data.events||[])) {
-      const comp  = ev.competitions?.[0];
-      const state = comp?.status?.type?.state||'';
-      if (comp?.status?.type?.completed)            past.push(ev);
-      else if (state==='pre' || state==='in') future.push(ev);
+    const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${eid}/schedule`,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw new Error('ESPN HTTP '+r.status);
+    const data=await r.json();if(tok!==loadToken)return;
+    const past=[],future=[];
+    for(const ev of(data.events||[])){
+      const comp=ev.competitions?.[0],st=comp?.status?.type?.state||'';
+      if(comp?.status?.type?.completed)past.push(ev);
+      else if(st==='pre'||st==='in')future.push(ev);
     }
-    past.sort((a,b)   => new Date(a.date)-new Date(b.date));
-    future.sort((a,b) => new Date(a.date)-new Date(b.date));
-
-    renderPanel(t, eid, past.at(-1)||null, future[0]||null);
-
-    // Start live score polling if next game is currently live
-    if (future[0]) {
-      const liveComp = future[0].competitions?.[0];
-      if (liveComp?.status?.type?.state === 'in') {
-        startLivePoller(eid, String(eid), tok);
-      }
-    }
-
-    // YouTube lookup — non-blocking
-    // Pass team objects directly — no string parsing, guaranteed correct nicknames
-    const lastGame = past.at(-1);
-    if (lastGame) {
-      const comp    = lastGame.competitions?.[0];
-      const myComp  = comp?.competitors?.find(c => String(c.team.id) === String(eid));
-      const oppComp = comp?.competitors?.find(c => String(c.team.id) !== String(eid));
-      const oppNHL  = TEAMS.find(x => x.a === (espnToNHL[oppComp?.team?.abbreviation] || ''));
-      findHighlight(t, oppNHL || {n: oppComp?.team?.shortDisplayName || oppComp?.team?.abbreviation || '?'}, myComp?.homeAway === 'home', new Date(lastGame.date)).then(yt => {
-        if (tok !== loadToken) return;
-        const btn = document.getElementById('ytBtn');
-        if (!btn) return;
-        btn.href = yt.url;
-        btn.classList.remove('searching');
-        const lbl = (yt.label||'').length>52 ? yt.label.slice(0,52)+'…' : yt.label;
-        btn.innerHTML = yt.direct
-          ? `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">DIRECT LINK</span>`
-          : `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">SEARCH</span>`;
+    past.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    future.sort((a,b)=>new Date(a.date)-new Date(b.date));
+    renderPanel(t,eid,past.at(-1)||null,future[0]||null);
+    const last=past.at(-1);
+    if(last){
+      const comp=last.competitions?.[0];
+      const mine=comp?.competitors?.find(c=>String(c.team.id)===String(eid));
+      const opp=comp?.competitors?.find(c=>String(c.team.id)!==String(eid));
+      const oppNHL=TEAMS.find(x=>x.a===(espnToNHL[opp?.team?.abbreviation]||''));
+      findHighlight(t,oppNHL||{n:opp?.team?.shortDisplayName||opp?.team?.abbreviation||'?'},mine?.homeAway==='home',new Date(last.date)).then(yt=>{
+        if(tok!==loadToken)return;
+        const btn=document.getElementById('ytBtn');if(!btn)return;
+        btn.href=yt.url;btn.classList.remove('searching');
+        const lbl=(yt.label||'').length>52?yt.label.slice(0,52)+'…':yt.label;
+        btn.innerHTML=yt.direct
+          ?`<div class="yi">${YTSVG}</div><div class="yt-lbl"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">DIRECT LINK</span>`
+          :`<div class="yi">${YTSVG}</div><div class="yt-lbl"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">SEARCH</span>`;
       });
     }
-
-  } catch(e) {
-    if (tok !== loadToken) return;
-    panel.innerHTML = `
-      <div class="detail-head">
-        <img src="${nhlLogo(t.a)}" style="width:84px;height:84px;object-fit:contain" onerror="this.src='${espnLogo(t.a)}'">
-        <div class="ti"><h2>${t.c} ${t.n}</h2><p>NHL · <span>${t.a}</span></p></div>
-      </div>
+  }catch(e){
+    if(tok!==loadToken)return;
+    panel.innerHTML=`<div class="detail-head"><img src="${nhlLogo(t.a)}" style="width:84px;height:84px;object-fit:contain" onerror="this.src='${espnLogo(t.a)}'"><div class="ti"><h2>${t.c} ${t.n}</h2><p>NHL · <span>${t.a}</span></p></div></div>
       <div class="error-box"><p>⚠️ ${e.message}</p></div>
-      <button class="retry-btn" onclick="retryTeam('${t.a}')">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
-        Try Again
-      </button>`;
+      <button class="retry-btn" onclick="retryTeam('${t.a}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>Try Again</button>`;
   }
 }
+function retryTeam(a){espnIdMap={};const t=TEAMS.find(x=>x.a===a);if(t)selectTeam(t);}
 
-function retryTeam(abbr) {
-  espnIdMap = {};
-  const t = TEAMS.find(x => x.a===abbr);
-  if (t) selectTeam(t);
-}
-
-// ── YouTube highlight lookup ──────────────────────────────────────
-const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';
-
-// Exact nicknames from official NHL team reference table
-const YT_NICK = {
-  ANA:'Ducks',          BOS:'Bruins',         BUF:'Sabres',
-  CGY:'Flames',         CAR:'Hurricanes',      CHI:'Blackhawks',
-  COL:'Avalanche',      CBJ:'Blue Jackets',    DAL:'Stars',
-  DET:'Red Wings',      EDM:'Oilers',          FLA:'Panthers',
-  LAK:'Kings',          MIN:'Wild',            MTL:'Canadiens',
-  NSH:'Predators',      NJD:'Devils',          NYI:'Islanders',
-  NYR:'Rangers',        OTT:'Senators',        PHI:'Flyers',
-  PIT:'Penguins',       SJS:'Sharks',          SEA:'Kraken',
-  STL:'Blues',          TBL:'Lightning',       TOR:'Maple Leafs',
-  UTA:'Mammoth',        VAN:'Canucks',         VGK:'Golden Knights',
-  WSH:'Capitals',       WPG:'Jets',
-};
-
-async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
-  const myNick   = YT_NICK[myTeam.a]  || myTeam.n;
-  const oppNick  = YT_NICK[oppTeam.a] || oppTeam.n;
-  const awayNick = iAmHome ? oppNick : myNick;
-  const homeNick = iAmHome ? myNick  : oppNick;
-
-  // ET date — game-night date matching NHL YouTube title format
-  const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
-    month:'long',day:'2-digit',year:'numeric'}).formatToParts(gameDate);
-  const dateStr = `${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
-
-  const titleStr    = `${awayNick} vs. ${homeNick} | NHL Highlights | ${dateStr}`;
-  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(titleStr)}`;
-
-  // Extract videoId from HTML — look for one contextually near both team names
-  function extractVideoId(html) {
-    if (!html) return null;
-    const hl = html.toLowerCase();
-    const away = awayNick.toLowerCase(), home = homeNick.toLowerCase();
-    const allIds = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-    for (const m of allIds) {
-      const ctx = hl.slice(Math.max(0, m.index - 400), m.index + 400);
-      if (ctx.includes(away) && ctx.includes(home)) return m[1];
-    }
-    return allIds[0]?.[1] || null;
+/* ════════ YOUTUBE ════════ */
+async function findHighlight(myTeam,oppTeam,iAmHome,gameDate){
+  const myN=YT_NICK[myTeam.a]||myTeam.n,oppN=YT_NICK[oppTeam.a]||oppTeam.n;
+  const awayN=iAmHome?oppN:myN,homeN=iAmHome?myN:oppN;
+  const p=new Intl.DateTimeFormat('en-US',{timeZone:ET,month:'long',day:'2-digit',year:'numeric'}).formatToParts(gameDate);
+  const dateStr=`${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
+  const titleStr=`${awayN} vs. ${homeN} | NHL Highlights | ${dateStr}`;
+  const searchUrl=`https://www.youtube.com/results?search_query=${encodeURIComponent(titleStr)}`;
+  function extId(html){
+    if(!html)return null;
+    const hl=html.toLowerCase(),away=awayN.toLowerCase(),home=homeN.toLowerCase();
+    const all=[...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+    for(const m of all){const ctx=hl.slice(Math.max(0,m.index-400),m.index+400);if(ctx.includes(away)&&ctx.includes(home))return m[1];}
+    return all[0]?.[1]||null;
   }
-
-  // ── Race RSS + two scrape proxies all at once — first win takes it ──
-  const rssPromise = (async () => {
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`;
-    const xml = await Promise.any([
-      fetch(rssUrl, {signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)throw 0;return r.text();}),
-      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-        {signal:AbortSignal.timeout(4000)}).then(r=>r.json()).then(d=>d.contents||''),
+  const rss=(async()=>{
+    const u=`https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`;
+    const xml=await Promise.any([
+      fetch(u,{signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)throw 0;return r.text();}),
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,{signal:AbortSignal.timeout(4000)}).then(r=>r.json()).then(d=>d.contents||''),
     ]);
-    const doc = new DOMParser().parseFromString(xml, 'application/xml');
-    for (const en of doc.querySelectorAll('entry')) {
-      const title = en.querySelector('title')?.textContent || '';
-      const diff  = (new Date(en.querySelector('published')?.textContent||'') - gameDate) / 86400000;
-      if (diff < 0 || diff > 2) continue;
-      const tl = title.toLowerCase();
-      if (!tl.includes(awayNick.toLowerCase()) || !tl.includes(homeNick.toLowerCase()) || !tl.includes('nhl highlight')) continue;
-      const link = en.querySelector('link')?.getAttribute('href') || '';
-      if (link.includes('youtube.com/watch')) return {url:link, direct:true, label:title};
+    const doc=new DOMParser().parseFromString(xml,'application/xml');
+    for(const en of doc.querySelectorAll('entry')){
+      const title=en.querySelector('title')?.textContent||'';
+      const diff=(new Date(en.querySelector('published')?.textContent||'')-gameDate)/86400000;
+      if(diff<0||diff>2)continue;
+      const tl=title.toLowerCase();
+      if(!tl.includes(awayN.toLowerCase())||!tl.includes(homeN.toLowerCase())||!tl.includes('nhl highlight'))continue;
+      const link=en.querySelector('link')?.getAttribute('href')||'';
+      if(link.includes('youtube.com/watch'))return{url:link,direct:true,label:title};
     }
-    throw new Error('no RSS match');
+    throw 0;
   })();
-
-  const scrapeA = fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`,
-    {signal:AbortSignal.timeout(5000)})
-    .then(r=>r.json()).then(d=>{
-      const vid = extractVideoId(d.contents||'');
-      if (!vid) throw new Error('no id');
-      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
-    });
-
-  const scrapeB = fetch(`https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
-    {signal:AbortSignal.timeout(5000)})
-    .then(r=>{if(!r.ok)throw 0;return r.text();}).then(html=>{
-      const vid = extractVideoId(html);
-      if (!vid) throw new Error('no id');
-      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
-    });
-
-  try {
-    return await Promise.any([rssPromise, scrapeA, scrapeB]);
-  } catch(_) {
-    return {url:searchUrl, direct:false, label:titleStr};
-  }
+  const scA=fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`,{signal:AbortSignal.timeout(5000)}).then(r=>r.json()).then(d=>{const v=extId(d.contents||'');if(!v)throw 0;return{url:`https://www.youtube.com/watch?v=${v}`,direct:true,label:titleStr};});
+  const scB=fetch(`https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,{signal:AbortSignal.timeout(5000)}).then(r=>{if(!r.ok)throw 0;return r.text();}).then(h=>{const v=extId(h);if(!v)throw 0;return{url:`https://www.youtube.com/watch?v=${v}`,direct:true,label:titleStr};});
+  try{return await Promise.any([rss,scA,scB]);}catch(_){return{url:searchUrl,direct:false,label:titleStr};}
 }
 
-// ── SVGs ──────────────────────────────────────────────────────────
-const YT  = `<svg width="12" height="9" viewBox="0 0 12 9" fill="white"><path d="M11.76 1.4A1.5 1.5 0 0 0 10.7.33C9.76 0 6 0 6 0S2.24 0 1.3.33A1.5 1.5 0 0 0 .24 1.4C0 2.35 0 4.5 0 4.5s0 2.15.24 3.1A1.5 1.5 0 0 0 1.3 8.67C2.24 9 6 9 6 9s3.76 0 4.7-.33a1.5 1.5 0 0 0 1.06-1.07C12 6.65 12 4.5 12 4.5s0-2.15-.24-3.1zM4.8 6.43V2.57L7.92 4.5 4.8 6.43z"/></svg>`;
-const CAL = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-const CLK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
-const HOM = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
-const TVS = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>`;
+/* ════════ SVGs / ICONS ════════ */
+const YTSVG=`<svg width="12" height="9" viewBox="0 0 12 9" fill="white"><path d="M11.76 1.4A1.5 1.5 0 0 0 10.7.33C9.76 0 6 0 6 0S2.24 0 1.3.33A1.5 1.5 0 0 0 .24 1.4C0 2.35 0 4.5 0 4.5s0 2.15.24 3.1A1.5 1.5 0 0 0 1.3 8.67C2.24 9 6 9 6 9s3.76 0 4.7-.33a1.5 1.5 0 0 0 1.06-1.07C12 6.65 12 4.5 12 4.5s0-2.15-.24-3.1zM4.8 6.43V2.57L7.92 4.5 4.8 6.43z"/></svg>`;
+const CAL=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+const CLK=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+const HOM=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+const TVS=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>`;
+const SHIELD=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted2)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
 
-// ── Render ────────────────────────────────────────────────────────
-function renderPanel(t, espnId, last, next) {
-  const myId = String(espnId);
-
-  // Next game card
-  const nextHTML = (() => {
-    if (!next) return `<p class="no-game">No upcoming games scheduled.</p>`;
-    const comp   = next.competitions[0];
-    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
-    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
-    const isHome = mine?.homeAway==='home';
-    const oppT   = opp?.team||{};
-    const {date,time,localTime} = fmtDate(next.date);
-    const venue  = comp.venue?.fullName||'';
-    const isLive = comp.status?.type?.state==='in';
-    const detail = comp.status?.type?.detail||'LIVE';
-    const myS    = parseScore(mine?.score) ?? '–';
-    const oppS   = parseScore(opp?.score)  ?? '–';
-
-    const liveScoreHTML = isLive ? `
-      <div class="live-score-block" id="liveScoreBlock">
-        <div class="sc-team">
-          <img src="${nhlLogo(t.a)}" alt="${t.a}" onerror="this.src='${espnLogo(t.a)}'" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px">
-          <div class="sc-num live-my-score">${myS}</div>
-          <div class="ab">${t.a}</div>
-        </div>
-        <div class="sc-sep"><span>–</span><div class="live-period">${detail}</div></div>
-        <div class="sc-team">
-          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px">
-          <div class="sc-num live-opp-score">${oppS}</div>
-          <div class="ab">${oppT.abbreviation||'?'}</div>
-        </div>
-      </div>` : '';
-
-    return `
-      ${isLive?`<div class="live-badge"><span class="live-dot"></span>LIVE · ${detail}</div>`:''}
-      ${liveScoreHTML}
-      <div class="vs-row">
-        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+/* ════════ RENDER TRACKER PANEL ════════ */
+function renderPanel(t,eid,last,next){
+  const mid=String(eid);
+  const nextH=(()=>{
+    if(!next)return`<p class="no-game">No upcoming games scheduled.</p>`;
+    const comp=next.competitions[0],mine=comp.competitors.find(c=>String(c.team.id)===mid),opp=comp.competitors.find(c=>String(c.team.id)!==mid);
+    const isH=mine?.homeAway==='home',oppT=opp?.team||{},{date,localTime}=fmtDate(next.date);
+    const live=comp.status?.type?.state==='in',detail=comp.status?.type?.detail||'',venue=comp.venue?.fullName||'';
+    return`${live?`<div class="live-badge"><span class="live-dot"></span>LIVE · ${detail}</div>`:''}
+      <div class="vs-row"><img src="${logoFor(oppT.abbreviation||'')}" alt="" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
         <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
-        <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
-      </div>
-      <hr class="divider">
+        <span class="ha-tag ${isH?'ha-home':'ha-away'}">${isH?'HOME':'AWAY'}</span>
+      </div><hr class="divider">
       <div class="info-row">${CAL}<strong>${date}</strong></div>
       <div class="info-row">${CLK}<strong>${localTime}</strong></div>
       ${venue?`<div class="info-row">${HOM}<strong>${venue}</strong></div>`:''}`;
   })();
-
-  // Last game card
-  const lastHTML = (() => {
-    if (!last) return `<p class="no-game">No recent game data found.</p>`;
-    const comp   = last.competitions[0];
-    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
-    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
-    const isHome = mine?.homeAway==='home';
-    const oppT   = opp?.team||{};
-    const myS    = parseScore(mine?.score);
-    const oppS   = parseScore(opp?.score);
-    const hasS   = myS!==null&&oppS!==null;
-    const won    = mine?.winner===true;
-    const {date} = fmtDate(last.date);
-    const status = comp.status?.type?.shortDetail||comp.status?.type?.description||'Final';
-
-    const scoreHTML = hasS ? `
+  const lastH=(()=>{
+    if(!last)return`<p class="no-game">No recent game data found.</p>`;
+    const comp=last.competitions[0],mine=comp.competitors.find(c=>String(c.team.id)===mid),opp=comp.competitors.find(c=>String(c.team.id)!==mid);
+    const isH=mine?.homeAway==='home',oppT=opp?.team||{};
+    const myS=parseScore(mine?.score),oppS=parseScore(opp?.score),hasS=myS!==null&&oppS!==null;
+    const won=mine?.winner===true,{date}=fmtDate(last.date),status=comp.status?.type?.shortDetail||'Final';
+    const scoreH=hasS?`
       <div class="score-block ${won?'wb':'lb'}">
-        <div class="sc-team">
-          <img src="${nhlLogo(t.a)}" alt="${t.a}" onerror="this.src='${espnLogo(t.a)}'">
-          <div class="sc-num ${won?'w':'l'}">${myS}</div>
-          <div class="ab">${t.a}</div>
-        </div>
+        <div class="sc-team"><img src="${nhlLogo(t.a)}" alt="${t.a}" onerror="this.src='${espnLogo(t.a)}'"><div class="sc-num ${won?'w':'l'}">${myS}</div><div class="ab">${t.a}</div></div>
         <div class="sc-sep"><span>–</span><div class="sc-per">${status}</div></div>
-        <div class="sc-team">
-          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
-          <div class="sc-num">${oppS}</div>
-          <div class="ab">${oppT.abbreviation||'?'}</div>
-        </div>
-      </div>
-      <div class="chip ${won?'w':'l'}">${won?'✓ WIN':'✗ LOSS'}</div>` : '';
-
-    return `
-      <div class="vs-row">
-        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+        <div class="sc-team"><img src="${logoFor(oppT.abbreviation||'')}" alt="" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'"><div class="sc-num">${oppS}</div><div class="ab">${oppT.abbreviation||'?'}</div></div>
+      </div><div class="chip ${won?'w':'l'}">${won?'✓ WIN':'✗ LOSS'}</div>`:'';
+    return`
+      <div class="vs-row"><img src="${logoFor(oppT.abbreviation||'')}" alt="" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
         <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
-        <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
-      </div>
-      ${scoreHTML}
-      <hr class="divider">
+        <span class="ha-tag ${isH?'ha-home':'ha-away'}">${isH?'HOME':'AWAY'}</span>
+      </div>${scoreH}<hr class="divider">
       <div class="info-row">${CAL}<strong>${date}</strong></div>
-      <a id="ytBtn" href="#" target="_blank" rel="noopener" class="yt-btn searching"
-         onclick="if(this.href==='#'||this.href.endsWith('#')){event.preventDefault()}">
-        <div class="yi">${YT}</div>
-        <div class="yt"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div>
-        <span class="yb">LOADING</span>
+      <a id="ytBtn" href="#" target="_blank" rel="noopener" class="yt-btn searching" onclick="if(this.href==='#'||this.href.endsWith('#'))event.preventDefault()">
+        <div class="yi">${YTSVG}</div><div class="yt-lbl"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div><span class="yb">LOADING</span>
       </a>
-      <a href="https://www.espn.com/nhl/game/_/gameId/${last.id}" target="_blank" rel="noopener" class="sub-link">
-        ${TVS} View full recap on ESPN
-      </a>`;
+      <a href="https://www.espn.com/nhl/game/_/gameId/${last.id}" target="_blank" rel="noopener" class="sub-link">${TVS} View full recap on ESPN</a>`;
   })();
-
-  panel.innerHTML = `
-    <div class="detail-head">
-      <img src="${nhlLogo(t.a)}" alt="${t.n}" onerror="this.src='${espnLogo(t.a)}'">
-      <div class="ti">
-        <h2>${t.c} ${t.n}</h2>
-        <p>NHL · <span>${t.a}</span></p>
-      </div>
+  panel.innerHTML=`
+    <div class="detail-head"><img src="${nhlLogo(t.a)}" alt="${t.n}" onerror="this.src='${espnLogo(t.a)}'">
+      <div class="ti"><h2>${t.c} ${t.n}</h2><p>NHL · <span>${t.a}</span></p></div>
     </div>
     <div class="games-grid">
-      <div class="game-card">
-        <div class="game-tag"><span class="dot" style="background:var(--muted2)"></span>Last Game</div>
-        ${lastHTML}
-      </div>
-      <div class="game-card">
-        <div class="game-tag"><span class="dot" style="background:var(--blue)"></span>Next Game</div>
-        ${nextHTML}
-      </div>
+      <div class="game-card"><div class="game-tag"><span class="dot" style="background:var(--muted2)"></span>Last Game</div>${lastH}</div>
+      <div class="game-card"><div class="game-tag"><span class="dot" style="background:var(--blue)"></span>Next Game</div>${nextH}</div>
     </div>`;
 }
+
+/* ════════ BRACKET ════════ */
+let bkOpen=true;
+function toggleBracket(){
+  bkOpen=!bkOpen;
+  document.getElementById('pbBody').classList.toggle('open',bkOpen);
+  document.getElementById('pbChev').classList.toggle('open',bkOpen);
+  const hdr=document.getElementById('bkHdrRow');
+  if(hdr&&hdr.dataset.ready==='1') hdr.style.display=bkOpen?'flex':'none';
+}
+
+function scrollBracket(side){
+  const sc=document.getElementById('pbScroll');
+  if(!sc)return;
+  if(side==='west'){
+    sc.scrollTo({left:0,behavior:'smooth'});
+  }else{
+    // bk-outer adds 16px padding on each side, so total scrollable = TW + 32px
+    sc.scrollTo({left:TW+32,behavior:'smooth'});
+  }
+}
+
+const sDB=new Map();
+
+// Layout constants (pixels)
+const R1W=205, CH=108, PAIR_GAP=14, INTER=26, COL_GAP=44, CENTER_GAP=54, PT=22;
+const R2W=178;
+const HALF=CH/2;
+
+// Y coords
+const wr1y=[PT, PT+CH+PAIR_GAP, PT+2*CH+PAIR_GAP+INTER, PT+3*CH+2*PAIR_GAP+INTER];
+const r1cy=wr1y.map(y=>y+HALF);
+const r2cy=[(r1cy[0]+r1cy[1])/2,(r1cy[2]+r1cy[3])/2];
+const cfy=(r2cy[0]+r2cy[1])/2;
+const TH=Math.max(wr1y[3]+CH+PT, cfy+HALF+PT);
+
+// X coords
+const WR1X=0, WR2X=R1W+COL_GAP, WCFX=WR2X+R2W+COL_GAP;
+const SCFX=WCFX+R2W+CENTER_GAP;
+const ECFX=SCFX+R2W+CENTER_GAP;
+const ER2X=ECFX+R2W+COL_GAP;
+const ER1X=ER2X+R2W+COL_GAP;
+const TW=ER1X+R1W;
+
+// Spine x coords for connectors
+const WSP12=R1W+COL_GAP/2;       // West R1→R2 spine
+const WSP23=WR2X+R2W+COL_GAP/2;  // West R2→CF spine
+const ESP12=ER1X-COL_GAP/2;      // East R1→R2 spine
+const ESP23=ER2X-COL_GAP/2;      // East R2→CF spine
+
+// ESPN uses short abbreviations that differ from NHL's.
+// This map lets us resolve conferences even before espnToNHL is populated.
+const ESPN_CONF={
+  // Eastern
+  'BOS':'E','BUF':'E','DET':'E','FLA':'E','MTL':'E','OTT':'E','TBL':'E','TB':'E',
+  'TOR':'E','TOR':'E','CAR':'E','CBJ':'E','CLB':'E','NJD':'E','NJ':'E',
+  'NYI':'E','NYR':'E','PHI':'E','PHX':'E','PIT':'E','WSH':'E','WAS':'E',
+  // Western
+  'ANA':'W','ARI':'W','CGY':'W','CHI':'W','COL':'W','DAL':'W','EDM':'W',
+  'LAK':'W','LA':'W','MIN':'W','NSH':'W','SJS':'W','SJ':'W','SEA':'W',
+  'STL':'W','UTA':'W','UTAH':'W','VAN':'W','VGK':'W','VGS':'W','WPG':'W',
+};
+function resolveConf(nhlAbbr, espnAbbr){
+  if(EASTERN.has(nhlAbbr))return 'E';
+  if(WESTERN.has(nhlAbbr))return 'W';
+  if(ESPN_CONF[espnAbbr])return ESPN_CONF[espnAbbr];
+  if(ESPN_CONF[nhlAbbr])return ESPN_CONF[nhlAbbr];
+  return 'N';
+}
+
+// Build a date string like "20260419"
+function datestamp(d){return d.toISOString().slice(0,10).replace(/-/g,'');}
+
+async function fetchAllPlayoffEvents(){
+  // Fetch scoreboard across three windows: recent, next 2 weeks, next 4 weeks
+  // This ensures we catch all first-round series regardless of start date
+  const now=new Date();
+  const d1=datestamp(now);
+  const d2=datestamp(new Date(now.getTime()+14*864e5));
+  const d3=datestamp(new Date(now.getTime()+60*864e5));
+  const base='https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/scoreboard?seasontype=3&limit=500';
+  const [r1,r2,r3]=await Promise.allSettled([
+    fetch(base,                         {signal:AbortSignal.timeout(10000)}).then(r=>r.ok?r.json():null),
+    fetch(`${base}&dates=${d1}-${d2}`,  {signal:AbortSignal.timeout(10000)}).then(r=>r.ok?r.json():null),
+    fetch(`${base}&dates=${d2}-${d3}`,  {signal:AbortSignal.timeout(10000)}).then(r=>r.ok?r.json():null),
+  ]);
+  // Merge all events, deduplicated by event id
+  const seen=new Set();
+  const events=[];
+  let seasonName='';
+  for(const res of[r1,r2,r3]){
+    if(res.status!=='fulfilled'||!res.value)continue;
+    const d=res.value;
+    if(d.season?.displayName)seasonName=d.season.displayName;
+    for(const ev of(d.events||[])){
+      if(!seen.has(ev.id)){seen.add(ev.id);events.push(ev);}
+    }
+  }
+  return{events,seasonName};
+}
+
+async function loadPlayoffBracket(){
+  const badge=document.getElementById('pbBadge');
+  try{
+    await espnReady;
+    const{events,seasonName}=await fetchAllPlayoffEvents();
+    if(seasonName)document.getElementById('pbSeason').textContent=seasonName+' · Bracket';
+    if(!events.length){
+      badge.className='pb-badge idle';badge.textContent='OFF-SEASON';
+      document.getElementById('bkWrap').innerHTML=`<p style="color:var(--muted);font-size:12px;text-align:center;padding:20px 10px">Playoff bracket will appear here once the postseason begins.</p>`;
+      return;
+    }
+
+    // ── Group events into series ──
+    sDB.clear();
+    for(const ev of events){
+      const comp=ev.competitions?.[0];if(!comp)continue;
+      const s=comp.series;
+      const rn=s?.round?.number||1;
+      const comps=comp.competitors||[];
+      // Stable series key: prefer ESPN series UID, fallback to sorted team IDs
+      const uid=s?.uid||comps.map(c=>c.team?.id||'').sort().join('_');
+      if(!sDB.has(uid)){
+        let ctrs;
+        if(s?.competitors?.length>=2){
+          ctrs=s.competitors.map(sc=>({
+            id:sc.id,wins:parseInt(sc.wins||0),seed:sc.seed||'',
+            team:comps.find(c=>c.team?.id===sc.id)?.team||{}
+          }));
+        }else{
+          ctrs=comps.map(c=>({
+            id:c.team?.id||'',wins:0,
+            seed:c.curatedRank?.current||c.seed||'',
+            team:c.team||{}
+          }));
+        }
+        sDB.set(uid,{uid,round:rn,competitors:ctrs,games:[]});
+      }
+      const entry=sDB.get(uid);
+      entry.games.push({ev,comp});
+      // Fill in seeds from game-level competitor if missing
+      entry.competitors.forEach(ct=>{
+        if(!ct.seed){
+          const gc=comps.find(c=>c.team?.id===ct.id);
+          ct.seed=gc?.curatedRank?.current||gc?.seed||'';
+        }
+        // Fill in team obj if empty
+        if(!ct.team?.abbreviation){
+          const gc=comps.find(c=>c.team?.id===ct.id);
+          if(gc?.team)ct.team=gc.team;
+        }
+      });
+    }
+
+    // ── Enrich series: wins, live state, nhl abbr, conference ──
+    for(const[,s]of sDB){
+      // Pull most recent series wins from the freshest game's series obj
+      const freshSeries=s.games.at(-1)?.comp?.series;
+      if(freshSeries?.competitors?.length>=2){
+        s.competitors[0].wins=parseInt(freshSeries.competitors[0].wins||0);
+        s.competitors[1].wins=parseInt(freshSeries.competitors[1].wins||0);
+      }else{
+        // Count from completed games
+        s.competitors.forEach(c=>c.wins=0);
+        for(const{comp}of s.games){
+          if(!comp.status?.type?.completed)continue;
+          for(const gc of comp.competitors||[])
+            if(gc.winner){const ct=s.competitors.find(c=>c.id===gc.team?.id);if(ct)ct.wins++;}
+        }
+      }
+      s.isLive=s.games.some(g=>g.comp?.status?.type?.state==='in');
+      s.isDone=s.competitors.some(c=>c.wins>=4);
+
+      // Resolve NHL abbreviation — try espnToNHL map first, then raw ESPN abbr
+      s.competitors.forEach(c=>{
+        const espnAbbr=c.team?.abbreviation||'';
+        c.nhl=espnToNHL[espnAbbr]||espnAbbr||'?';
+      });
+
+      // Conference: use robust dual-lookup (fixes TB→E, NJ→E, etc.)
+      const c0=s.competitors[0];
+      s.conf=resolveConf(c0.nhl, c0.team?.abbreviation||'');
+
+      // Game navigation helpers
+      s.nextGame=s.games.find(g=>!g.comp?.status?.type?.completed&&g.comp?.status?.type?.state!=='in');
+      s.liveGame=s.games.find(g=>g.comp?.status?.type?.state==='in');
+      s.lastDoneGame=s.games
+        .filter(g=>g.comp?.status?.type?.completed)
+        .sort((a,b)=>new Date(b.ev.date)-new Date(a.ev.date))[0];
+      s.gameCount=s.games.length;
+    }
+
+    // ── Bucket by round & conference ──
+    const ER1=[],ER2=[],ECF=[],WR1=[],WR2=[],WCF=[];let SCF=null;
+    for(const[,s]of sDB){
+      if(s.round===4){SCF=s;continue;}
+      if(s.conf==='N'){
+        // Unknown conf — try harder before discarding
+        // Re-check using team name lookup
+        const t0=TEAMS.find(x=>x.a===s.competitors[0].nhl);
+        if(t0){
+          s.conf=EASTERN.has(t0.a)?'E':WESTERN.has(t0.a)?'W':'N';
+        }
+        if(s.conf==='N'&&s.round===1){
+          // Last resort: treat as SCF placeholder only if round=4, else skip
+          continue;
+        }
+      }
+      const buckets={E:[ER1,ER2,ECF],W:[WR1,WR2,WCF]}[s.conf];
+      if(buckets&&buckets[s.round-1])buckets[s.round-1].push(s);
+    }
+
+    // Sort each bucket by lowest seed number in series
+    const srt=a=>a.sort((x,y)=>{
+      const sx=Math.min(...x.competitors.map(c=>parseInt(c.seed)||99));
+      const sy=Math.min(...y.competitors.map(c=>parseInt(c.seed)||99));
+      return sx-sy;
+    });
+    [ER1,ER2,ECF,WR1,WR2,WCF].forEach(srt);
+
+    const hasLive=[...sDB.values()].some(s=>s.isLive);
+    badge.className=hasLive?'pb-badge live':'pb-badge idle';
+    badge.textContent=hasLive?'LIVE':'PLAYOFFS';
+
+    renderBracket({ER1,ER2,ECF,WR1,WR2,WCF,SCF});
+  }catch(e){
+    document.getElementById('pbBadge').className='pb-badge idle';
+    document.getElementById('pbBadge').textContent='ERROR';
+    document.getElementById('bkWrap').innerHTML=`<div style="padding:16px;text-align:center"><p style="color:var(--loss);font-size:12px">⚠️ Could not load playoff data<br><small style="color:var(--muted)">${e}</small></p><button class="retry-btn" style="margin:10px auto 0" onclick="loadPlayoffBracket()">Try Again</button></div>`;
+  }
+}
+
+// ── Line helper ──
+function L(x,y,w,h,vert=false){
+  if(vert) return`<div class="bk-line" style="left:${x}px;top:${y}px;width:2px;height:${h}px;"></div>`;
+  return`<div class="bk-line" style="left:${x}px;top:${y-1}px;width:${w}px;height:2px;"></div>`;
+}
+
+// ── Connectors ──
+function westConnectors(r1y_arr, r2cy_arr, cfcY){
+  let h='';
+  // R1→R2: two pairs
+  for(let p=0;p<2;p++){
+    const i=p*2;
+    const cy0=r1y_arr[i]+HALF, cy1=r1y_arr[i+1]+HALF, midy=r2cy_arr[p];
+    h+=L(R1W,cy0,COL_GAP/2,0);           // h-line from R1 top card right
+    h+=L(R1W,cy1,COL_GAP/2,0);           // h-line from R1 bot card right
+    h+=L(WSP12,cy0,0,cy1-cy0,true);      // vertical spine
+    h+=L(WSP12,midy,WR2X-WSP12,0);       // h-line to R2
+  }
+  // R2→CF
+  const r2y0=r2cy_arr[0], r2y1=r2cy_arr[1];
+  h+=L(WR2X+R2W,r2y0,COL_GAP/2,0);      // h-line from R2[0] right
+  h+=L(WR2X+R2W,r2y1,COL_GAP/2,0);      // h-line from R2[1] right
+  h+=L(WSP23,r2y0,0,r2y1-r2y0,true);    // spine
+  h+=L(WSP23,cfcY,WCFX-WSP23,0);        // h-line to CF
+  // CF→SCF
+  h+=L(WCFX+R2W,cfcY,SCFX-(WCFX+R2W),0);
+  return h;
+}
+function eastConnectors(r1y_arr, r2cy_arr, cfcY){
+  let h='';
+  // R1→R2
+  for(let p=0;p<2;p++){
+    const i=p*2;
+    const cy0=r1y_arr[i]+HALF, cy1=r1y_arr[i+1]+HALF, midy=r2cy_arr[p];
+    h+=L(ESP12,cy0,ER1X-ESP12,0);        // h-line to R1 top
+    h+=L(ESP12,cy1,ER1X-ESP12,0);        // h-line to R1 bot
+    h+=L(ESP12,cy0,0,cy1-cy0,true);      // spine
+    h+=L(ER2X+R2W,midy,ESP12-(ER2X+R2W),0); // h-line from R2 right to spine
+  }
+  // R2→CF
+  const r2y0=r2cy_arr[0], r2y1=r2cy_arr[1];
+  h+=L(ESP23,r2y0,ER2X-ESP23,0);        // h-line to R2[0] left
+  h+=L(ESP23,r2y1,ER2X-ESP23,0);        // h-line to R2[1] left
+  h+=L(ESP23,r2y0,0,r2y1-r2y0,true);   // spine
+  h+=L(ECFX+R2W,cfcY,ESP23-(ECFX+R2W),0); // h-line from ECF right to spine
+  // SCF→ECF
+  h+=L(SCFX+R2W,cfcY,ECFX-(SCFX+R2W),0);
+  return h;
+}
+
+// ── Card builder ──
+function makeCard(s,x,yCtr,isFinal=false,r1=true){
+  const W=r1?R1W:R2W;
+  if(!s)return makeTBD(x,yCtr,W,isFinal);
+  const[c0,c1]=s.competitors;
+  const w0=c0.wins,w1=c1.wins;
+  const done=s.isDone,win0=done&&w0>w1,win1=done&&w1>w0;
+
+  // Header: series score is the primary label
+  let scoreLbl,liveClass='';
+  const a0=c0.nhl||'?', a1=c1.nhl||'?';
+  const abbr0=`<span class="bk-abbr">${a0}</span>`, abbr1=`<span class="bk-abbr">${a1}</span>`;
+  if(s.isLive){
+    scoreLbl=`${abbr0} ${w0}–${w1} ${abbr1}`;liveClass='live-lbl';
+  }else if(done){
+    scoreLbl=`${w0}–${w1} · FINAL`;
+  }else if(w0>0||w1>0){
+    scoreLbl=`${abbr0} ${w0}–${w1} ${abbr1}`;
+  }else{
+    scoreLbl='SERIES';
+  }
+  if(isFinal&&s.isLive)liveClass='live-lbl';
+
+  // Footer
+  let foot='';
+  if(s.isLive&&s.liveGame){
+    const per=s.liveGame.comp?.status?.type?.detail||'LIVE';
+    foot=`<div class="bk-live-per">${per}</div>`;
+  }else if(done){
+    const winner=win0?c0.nhl:c1.nhl;
+    foot=`<span class="bk-won-lbl">✓ ${teamNick(winner)} wins</span>`;
+  }else if(s.nextGame){
+    const{short,shortTime}=fmtDate(s.nextGame.ev.date);
+    const bcast=(s.nextGame.comp?.broadcasts||[])
+      .flatMap(b=>b.names||b.market?.name?[b.names?.[0]||b.market?.name]:[])
+      .filter(Boolean)[0]||'';
+    foot=`<span class="bk-dt">${short} · ${shortTime}</span>${bcast?`<span class="bk-tv">${bcast}</span>`:''}`;
+  }
+
+  const cls=['bk-c',s.isLive?'bk-live':'',isFinal?'bk-final-cup':''].filter(Boolean).join(' ');
+
+  return`<div class="${cls}" style="left:${x}px;top:${yCtr-HALF}px;width:${W}px;height:${CH}px" onclick="onBkClick('${encodeURIComponent(s.uid)}')" title="Tap for highlights">
+    <div class="bk-ch">
+      <span class="bk-glbl ${liveClass}${isFinal?' cup-lbl':''}">${scoreLbl}</span>
+    </div>
+    ${teamRow(c0,win0)}
+    ${teamRow(c1,win1)}
+    <div class="bk-cf">${foot}</div>
+  </div>`;
+}
+
+function teamRow(c,isWin){
+  const a=c.nhl||'?';
+  const logo=nhlLogo(a),fb=espnLogo(c.team?.abbreviation||'nhl');
+  const nick=teamNick(a)||a;
+  return`<div class="bk-tr${isWin?' bk-win':''}">
+    <img src="${logo}" alt="${a}" onerror="this.src='${fb}'">
+    <span class="bk-sd">${c.seed||''}</span>
+    <span class="bk-nm">${nick}</span>
+    <span class="bk-wn">${c.wins}</span>
+  </div>`;
+}
+
+function makeTBD(x,yCtr,W,isFinal=false){
+  const lbl=isFinal?'CHAMPIONSHIP':'TBD';
+  return`<div class="bk-c bk-tbd" style="left:${x}px;top:${yCtr-HALF}px;width:${W}px;height:${CH}px">
+    <div class="bk-ch"><span class="bk-glbl${isFinal?' cup-lbl':''}">${isFinal?'🏆 ':''}</span></div>
+    <div class="bk-tr"><span class="bk-nm tbd-nm">${SHIELD} TBD</span></div>
+    <div class="bk-tr"><span class="bk-nm tbd-nm">${SHIELD} TBD</span></div>
+    <div class="bk-cf"></div>
+  </div>`;
+}
+
+function renderBracket({ER1,ER2,ECF,WR1,WR2,WCF,SCF}){
+  const wrap=document.getElementById('bkWrap');
+  // Show the header row (now outside pb-body so no clipping)
+  const hdr=document.getElementById('bkHdrRow');
+  if(hdr){hdr.style.display='flex';hdr.dataset.ready='1';}
+
+  wrap.style.cssText=`position:relative;width:${TW}px;height:${TH}px;`;
+  let h='';
+
+  // Connectors (no inline conf labels — they're in the header row above)
+  const WR1Ypositions=[wr1y[0],wr1y[1],wr1y[2],wr1y[3]];
+  h+=westConnectors(WR1Ypositions,r2cy,cfy);
+  h+=eastConnectors(WR1Ypositions,r2cy,cfy);
+
+  // West cards
+  for(let i=0;i<4;i++) h+=makeCard(WR1[i]||null,WR1X,r1cy[i],false,true);
+  for(let i=0;i<2;i++) h+=makeCard(WR2[i]||null,WR2X,r2cy[i],false,false);
+  h+=makeCard(WCF[0]||null,WCFX,cfy,false,false);
+
+  // SCF center
+  h+=makeCard(SCF||null,SCFX,cfy,true,false);
+
+  // East cards
+  h+=makeCard(ECF[0]||null,ECFX,cfy,false,false);
+  for(let i=0;i<2;i++) h+=makeCard(ER2[i]||null,ER2X,r2cy[i],false,false);
+  for(let i=0;i<4;i++) h+=makeCard(ER1[i]||null,ER1X,r1cy[i],false,true);
+
+  wrap.innerHTML=h;
+}
+
+async function onBkClick(ue){
+  const uid=decodeURIComponent(ue),s=sDB.get(uid);if(!s)return;
+
+  const completedGames=s.games
+    .filter(g=>g.comp?.status?.type?.completed)
+    .sort((a,b)=>new Date(a.ev.date)-new Date(b.ev.date));
+
+  const c0=s.competitors[0],c1=s.competitors[1];
+  const n0=YT_NICK[c0.nhl]||c0.nhl||'NHL';
+  const n1=YT_NICK[c1.nhl]||c1.nhl||'NHL';
+
+  if(!completedGames.length){
+    // Series not started yet — search for the matchup
+    const q=`NHL Playoff Highlights | ${n0} vs. ${n1}`;
+    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(q)}`,'_blank');
+    return;
+  }
+
+  const{comp,ev}=completedGames.at(-1); // most recent completed game
+  const gameNum=completedGames.length;
+
+  // Determine away/home for this specific game
+  const homeComp=comp.competitors?.find(c=>c.homeAway==='home');
+  const awayComp=comp.competitors?.find(c=>c.homeAway==='away');
+  const homeA=espnToNHL[homeComp?.team?.abbreviation]||homeComp?.team?.abbreviation||c0.nhl;
+  const awayA=espnToNHL[awayComp?.team?.abbreviation]||awayComp?.team?.abbreviation||c1.nhl;
+  const homeN=YT_NICK[homeA]||teamNick(homeA)||homeA;
+  const awayN=YT_NICK[awayA]||teamNick(awayA)||awayA;
+
+  // Round label: Round 1, Round 2, Conference Final, Stanley Cup Final
+  const roundLabels={1:'Round 1',2:'Round 2',3:'Conference Final',4:'Stanley Cup Final'};
+  const roundLbl=roundLabels[s.round]||`Round ${s.round}`;
+
+  // Date in "April 18, 2026" format
+  const d=new Date(ev.date);
+  const p=new Intl.DateTimeFormat('en-US',{timeZone:ET,month:'long',day:'numeric',year:'numeric'}).formatToParts(d);
+  const dateStr=`${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
+
+  // Exact format: "NHL Playoff Highlights | Wild vs. Stars | Round 1 Gm 1 | April 18, 2026"
+  const searchStr=`NHL Playoff Highlights | ${awayN} vs. ${homeN} | ${roundLbl} Gm ${gameNum} | ${dateStr}`;
+  window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(searchStr)}`,'_blank');
+}
+
+/* ════════ NEWS ════════ */
+async function loadNews(){
+  const el=document.getElementById('newsGrid');
+  try{
+    const r=await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/news?limit=10',{signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw 0;
+    const data=await r.json();
+    const arts=data.articles||[];
+    if(!arts.length){el.innerHTML=`<p style="color:var(--muted);font-size:12px">No news available.</p>`;return;}
+    el.innerHTML=`<div class="news-scroll">${arts.map(a=>{
+      const img=a.images?.[0]?.url||'';
+      const url=a.links?.web?.href||a.links?.mobile?.href||'#';
+      const hl=(a.headline||'').replace(/"/g,'&quot;');
+      const pub=a.published?new Date(a.published).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+      const src=a.source||'ESPN';
+      return`<a class="news-card" href="${url}" target="_blank" rel="noopener">
+        ${img?`<img class="news-thumb" src="${img}" alt="" onerror="this.style.display='none'" loading="lazy">`:''}
+        <div class="news-body"><div class="news-headline">${hl}</div><div class="news-meta">${src}${pub?' · '+pub:''}</div></div>
+      </a>`;
+    }).join('')}</div>`;
+  }catch(e){el.innerHTML=`<p style="color:var(--muted);font-size:12px">Could not load news.</p>`;}
+}
+
+/* ════════ INIT ════════ */
+espnReady.then(()=>loadPlayoffBracket()).catch(()=>loadPlayoffBracket());
+loadNews();
 </script>
 </body>
 </html>
