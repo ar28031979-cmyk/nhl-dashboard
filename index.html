@@ -384,6 +384,8 @@ function fmtDate(s){
     localTime:d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit',timeZoneName:'short'}),
     short:d.toLocaleDateString('en-US',{timeZone:ET,month:'short',day:'numeric'}),
     shortTime:d.toLocaleTimeString('en-US',{timeZone:ET,hour:'numeric',minute:'2-digit'}),
+    localShort:d.toLocaleDateString(undefined,{month:'short',day:'numeric'}),
+    localShortTime:d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}),
     parts:new Intl.DateTimeFormat('en-US',{timeZone:ET,month:'long',day:'2-digit',year:'numeric'}).formatToParts(d),
   };
 }
@@ -899,11 +901,11 @@ function makeCard(s,x,yCtr,isFinal=false,r1=true){
     const winner=win0?c0.nhl:c1.nhl;
     foot=`<span class="bk-won-lbl">✓ ${teamNick(winner)} wins</span>`;
   }else if(s.nextGame){
-    const{short,shortTime}=fmtDate(s.nextGame.ev.date);
+    const{short,shortTime,localShort,localShortTime}=fmtDate(s.nextGame.ev.date);
     const bcast=(s.nextGame.comp?.broadcasts||[])
       .flatMap(b=>b.names||b.market?.name?[b.names?.[0]||b.market?.name]:[])
       .filter(Boolean)[0]||'';
-    foot=`<span class="bk-dt">${short} · ${shortTime}</span>${bcast?`<span class="bk-tv">${bcast}</span>`:''}`;
+    foot=`<span class="bk-dt">${localShort} · ${localShortTime}</span>${bcast?`<span class="bk-tv">${bcast}</span>`:''}`;
   }
 
   const cls=['bk-c',s.isLive?'bk-live':'',isFinal?'bk-final-cup':''].filter(Boolean).join(' ');
