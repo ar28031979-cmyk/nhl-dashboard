@@ -432,10 +432,6 @@ function selectTeam(t){
   const tok=++loadToken;
   panel.className='detail-panel';panel.style.setProperty('--tc',t.color);
   panel.innerHTML=`<div class="loader"><div class="loader-spinner"></div><h3>${t.n}</h3><p id="ls">Connecting to ESPN…</p></div>`;
-  setTimeout(()=>{
-    const tb=document.querySelector('.top-bar'),off=tb?tb.offsetHeight:0;
-    window.scrollTo({top:panel.getBoundingClientRect().top+window.scrollY-off-8,behavior:'smooth'});
-  },50);
   loadTeam(t,tok);
 }
 function step(m){const el=document.getElementById('ls');if(el)el.textContent=m;}
@@ -464,6 +460,11 @@ async function loadTeam(t,tok){
     past.sort((a,b)=>new Date(a.date)-new Date(b.date));
     future.sort((a,b)=>new Date(a.date)-new Date(b.date));
     renderPanel(t,eid,past.at(-1)||null,future[0]||null);
+    // Scroll now — panel has real content and height
+    requestAnimationFrame(()=>{
+      const tb=document.querySelector('.top-bar'),off=tb?tb.offsetHeight:0;
+      window.scrollTo({top:panel.getBoundingClientRect().top+window.scrollY-off-8,behavior:'smooth'});
+    });
     const last=past.at(-1);
     if(last){
       const comp=last.competitions?.[0];
@@ -921,9 +922,11 @@ function teamRow(c,isWin){
   const a=c.nhl||'?';
   const logo=nhlLogo(a),fb=espnLogo(c.team?.abbreviation||'nhl');
   const nick=teamNick(a)||a;
+  const seedNum=parseInt(c.seed||0);
+  const seedTxt=(seedNum>=1&&seedNum<=16)?seedNum:'';
   return`<div class="bk-tr${isWin?' bk-win':''}">
     <img src="${logo}" alt="${a}" onerror="this.src='${fb}'">
-    <span class="bk-sd">${c.seed||''}</span>
+    <span class="bk-sd">${seedTxt}</span>
     <span class="bk-nm">${nick}</span>
     <span class="bk-wn">${c.wins}</span>
   </div>`;
