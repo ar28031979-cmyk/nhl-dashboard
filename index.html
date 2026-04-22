@@ -146,15 +146,19 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 /* card header */
 .bk-ch{
   display:flex;align-items:center;justify-content:space-between;
-  padding:4px 8px 3px;
+  padding:4px 7px 3px;
   background:var(--surface3);
   border-bottom:1px solid rgba(70,73,79,.5);
   flex-shrink:0;
-  min-height:20px;
+  min-height:20px;gap:4px;
 }
-.bk-glbl{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1px;color:var(--blue);font-weight:700;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bk-pip-row{display:flex;align-items:center;gap:3px;flex-shrink:0;}
+.bk-pip{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.bk-pip-win{background:var(--win);}
+.bk-pip-lead{background:var(--blue);}
+.bk-pip-off{background:var(--border2);}
+.bk-glbl{font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:1.5px;color:var(--muted);font-weight:700;text-transform:uppercase;white-space:nowrap;text-align:center;flex:1;}
 .bk-glbl.cup-lbl{color:var(--cup);}
-.bk-glbl.live-lbl{color:var(--win);}
 
 /* team rows */
 .bk-tr{
@@ -186,8 +190,6 @@ body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
 .bk-dt{font-size:8.5px;color:var(--muted2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .bk-tv{font-size:8px;color:var(--blue);font-weight:600;white-space:nowrap;flex-shrink:0;margin-left:4px;}
 .bk-won-lbl{font-size:8px;color:var(--win);font-weight:700;letter-spacing:.5px;}
-.bk-live-per{font-size:8px;color:var(--win);font-weight:700;display:flex;align-items:center;gap:3px;}
-.bk-live-per::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--win);animation:lp 1s infinite;flex-shrink:0;}
 
 /* ── DETAIL PANEL ── */
 .detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;position:relative;overflow:hidden;animation:fadeUp .25s ease;box-shadow:var(--shadow-md);margin-bottom:14px;}
@@ -544,14 +546,13 @@ function renderPanel(t,eid,last,next){
   const nextH=(()=>{
     if(!next)return`<p class="no-game">No upcoming games scheduled.</p>`;
     const comp=next.competitions[0],mine=comp.competitors.find(c=>String(c.team.id)===mid),opp=comp.competitors.find(c=>String(c.team.id)!==mid);
-    const isH=mine?.homeAway==='home',oppT=opp?.team||{},{date,localTime}=fmtDate(next.date);
-    const live=comp.status?.type?.state==='in',detail=comp.status?.type?.detail||'',venue=comp.venue?.fullName||'';
-    return`${live?`<div class="live-badge"><span class="live-dot"></span>LIVE · ${detail}</div>`:''}
-      <div class="vs-row"><img src="${logoFor(oppT.abbreviation||'')}" alt="" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+    const isH=mine?.homeAway==='home',oppT=opp?.team||{},{localTime,localShort}=fmtDate(next.date);
+    const venue=comp.venue?.fullName||'';
+    return`<div class="vs-row"><img src="${logoFor(oppT.abbreviation||'')}" alt="" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
         <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
         <span class="ha-tag ${isH?'ha-home':'ha-away'}">${isH?'HOME':'AWAY'}</span>
       </div><hr class="divider">
-      <div class="info-row">${CAL}<strong>${date}</strong></div>
+      <div class="info-row">${CAL}<strong>${localShort}</strong></div>
       <div class="info-row">${CLK}<strong>${localTime}</strong></div>
       ${venue?`<div class="info-row">${HOM}<strong>${venue}</strong></div>`:''}`;
   })();
@@ -560,7 +561,7 @@ function renderPanel(t,eid,last,next){
     const comp=last.competitions[0],mine=comp.competitors.find(c=>String(c.team.id)===mid),opp=comp.competitors.find(c=>String(c.team.id)!==mid);
     const isH=mine?.homeAway==='home',oppT=opp?.team||{};
     const myS=parseScore(mine?.score),oppS=parseScore(opp?.score),hasS=myS!==null&&oppS!==null;
-    const won=mine?.winner===true,{date}=fmtDate(last.date),status=comp.status?.type?.shortDetail||'Final';
+    const won=mine?.winner===true,{localShort}=fmtDate(last.date),status=comp.status?.type?.shortDetail||'Final';
     const scoreH=hasS?`
       <div class="score-block ${won?'wb':'lb'}">
         <div class="sc-team"><img src="${nhlLogo(t.a)}" alt="${t.a}" onerror="this.src='${espnLogo(t.a)}'"><div class="sc-num ${won?'w':'l'}">${myS}</div><div class="ab">${t.a}</div></div>
@@ -572,7 +573,7 @@ function renderPanel(t,eid,last,next){
         <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
         <span class="ha-tag ${isH?'ha-home':'ha-away'}">${isH?'HOME':'AWAY'}</span>
       </div>${scoreH}<hr class="divider">
-      <div class="info-row">${CAL}<strong>${date}</strong></div>
+      <div class="info-row">${CAL}<strong>${localShort}</strong></div>
       <a id="ytBtn" href="#" target="_blank" rel="noopener" class="yt-btn searching" onclick="if(this.href==='#'||this.href.endsWith('#'))event.preventDefault()">
         <div class="yi">${YTSVG}</div><div class="yt-lbl"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div><span class="yb">LOADING</span>
       </a>
@@ -877,43 +878,32 @@ function makeCard(s,x,yCtr,isFinal=false,r1=true){
   const w0=c0.wins,w1=c1.wins;
   const done=s.isDone,win0=done&&w0>w1,win1=done&&w1>w0;
 
-  // Header: series score is the primary label
-  let scoreLbl,liveClass='';
-  const a0=c0.nhl||'?', a1=c1.nhl||'?';
-  const abbr0=`<span class="bk-abbr">${a0}</span>`, abbr1=`<span class="bk-abbr">${a1}</span>`;
-  if(s.isLive){
-    scoreLbl=`${abbr0} ${w0}–${w1} ${abbr1}`;liveClass='live-lbl';
-  }else if(done){
-    scoreLbl=`${w0}–${w1} · FINAL`;
-  }else if(w0>0||w1>0){
-    scoreLbl=`${abbr0} ${w0}–${w1} ${abbr1}`;
-  }else{
-    scoreLbl='SERIES';
-  }
-  if(isFinal&&s.isLive)liveClass='live-lbl';
+  // Header: static "SERIES SCORE" label with coloured win-dot indicators
+  // Green dots = wins for each team, shown as small pips
+  const MAX=4;
+  const dots0=Array.from({length:MAX},(_,i)=>`<span class="bk-pip ${i<w0?(win0?'bk-pip-win':'bk-pip-lead'):'bk-pip-off'}"></span>`).join('');
+  const dots1=Array.from({length:MAX},(_,i)=>`<span class="bk-pip ${i<w1?(win1?'bk-pip-win':'bk-pip-lead'):'bk-pip-off'}"></span>`).join('');
+  const headerCls=isFinal?'cup-lbl':'';
+  const hdrHTML=`<div class="bk-ch">
+    <div class="bk-pip-row">${dots0}</div>
+    <span class="bk-glbl ${headerCls}">${done?'FINAL':'SERIES'}</span>
+    <div class="bk-pip-row">${dots1}</div>
+  </div>`;
 
-  // Footer
+  // Footer: "NEXT GAME · date" or winner, no live, no broadcaster
   let foot='';
-  if(s.isLive&&s.liveGame){
-    const per=s.liveGame.comp?.status?.type?.detail||'LIVE';
-    foot=`<div class="bk-live-per">${per}</div>`;
-  }else if(done){
+  if(done){
     const winner=win0?c0.nhl:c1.nhl;
     foot=`<span class="bk-won-lbl">✓ ${teamNick(winner)} wins</span>`;
   }else if(s.nextGame){
-    const{short,shortTime,localShort,localShortTime}=fmtDate(s.nextGame.ev.date);
-    const bcast=(s.nextGame.comp?.broadcasts||[])
-      .flatMap(b=>b.names||b.market?.name?[b.names?.[0]||b.market?.name]:[])
-      .filter(Boolean)[0]||'';
-    foot=`<span class="bk-dt">${localShort} · ${localShortTime}</span>${bcast?`<span class="bk-tv">${bcast}</span>`:''}`;
+    const{localShort,localShortTime}=fmtDate(s.nextGame.ev.date);
+    foot=`<span class="bk-dt">Next · ${localShort} ${localShortTime}</span>`;
   }
 
-  const cls=['bk-c',s.isLive?'bk-live':'',isFinal?'bk-final-cup':''].filter(Boolean).join(' ');
+  const cls=['bk-c',isFinal?'bk-final-cup':''].filter(Boolean).join(' ');
 
   return`<div class="${cls}" style="left:${x}px;top:${yCtr-HALF}px;width:${W}px;height:${CH}px" onclick="onBkClick('${encodeURIComponent(s.uid)}')" title="Tap for highlights">
-    <div class="bk-ch">
-      <span class="bk-glbl ${liveClass}${isFinal?' cup-lbl':''}">${scoreLbl}</span>
-    </div>
+    ${hdrHTML}
     ${teamRow(c0,win0)}
     ${teamRow(c1,win1)}
     <div class="bk-cf">${foot}</div>
