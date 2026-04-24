@@ -705,80 +705,101 @@ async function loadPlayoffBracket(){
     sDB.clear();
     for(const ev of events){
       const comp=ev.competitions?.[0];if(!comp)continue;
-      const s=comp.series;
-      const rn=s?.round?.number||1;
-      const comps=comp.competitors||[];
-      // Stable series key: prefer ESPN series UID, fallback to sorted team IDs
-      const uid=s?.uid||comps.map(c=>c.team?.id||'').sort().join('_');
+      const series=comp.series;
+      const rn=series?.round?.number||1;
+      const gameComps=comp.competitors||[];
+      if(gameComps.length<2)continue;
+
+      // Series key: use ESPN's series uid if available, else sort team ids
+      const uid=series?.uid||gameComps.map(c=>c.team?.id||'').sort().join('_');
+
       if(!sDB.has(uid)){
-        let ctrs;
-        if(s?.competitors?.length>=2){
-          ctrs=s.competitors.map(sc=>({
-            id:sc.id,wins:parseInt(sc.wins||0),seed:sc.seed||'',
-            team:comps.find(c=>c.team?.id===sc.id)?.team||{}
-          }));
-        }else{
-          ctrs=comps.map(c=>({
-            id:c.team?.id||'',wins:0,
-            seed:c.curatedRank?.current||c.seed||'',
-            team:c.team||{}
-          }));
-        }
+        // Build our competitor list from game-level team data (team.id is reliable)
+        const ctrs=gameComps.map(c=>({
+          id:String(c.team?.id||''),
+          wins:0,
+          seed:c.curatedRank?.current||c.seed||'',
+          team:c.team||{}
+        }));
         sDB.set(uid,{uid,round:rn,competitors:ctrs,games:[]});
       }
+
       const entry=sDB.get(uid);
       entry.games.push({ev,comp});
-      // Fill in seeds from game-level competitor if missing
-      entry.competitors.forEach(ct=>{
-        if(!ct.seed){
-          const gc=comps.find(c=>c.team?.id===ct.id);
-          ct.seed=gc?.curatedRank?.current||gc?.seed||'';
-        }
-        // Fill in team obj if empty
-        if(!ct.team?.abbreviation){
-          const gc=comps.find(c=>c.team?.id===ct.id);
-          if(gc?.team)ct.team=gc.team;
-        }
+
+      // Keep seed + team data fresh from each game
+      gameComps.forEach(gc=>{
+        const ct=entry.competitors.find(c=>c.id===String(gc.team?.id));
+        if(!ct)return;
+        if(!ct.seed&&gc.curatedRank?.current) ct.seed=String(gc.curatedRank.current);
+        if(!ct.team?.abbreviation&&gc.team?.abbreviation) ct.team=gc.team;
       });
     }
 
-    // ── Enrich series: wins, live state, nhl abbr, conference ──
+    // ── Enrich series ──
     for(const[,s]of sDB){
-      // Pull most recent series wins from the freshest game's series obj
-      const freshSeries=s.games.at(-1)?.comp?.series;
-      if(freshSeries?.competitors?.length>=2){
-        s.competitors[0].wins=parseInt(freshSeries.competitors[0].wins||0);
-        s.competitors[1].wins=parseInt(freshSeries.competitors[1].wins||0);
-      }else{
-        // Count from completed games
-        s.competitors.forEach(c=>c.wins=0);
-        for(const{comp}of s.games){
-          if(!comp.status?.type?.completed)continue;
-          for(const gc of comp.competitors||[])
-            if(gc.winner){const ct=s.competitors.find(c=>c.id===gc.team?.id);if(ct)ct.wins++;}
+      // Sort games oldest→newest so at(-1) is the most recent
+      s.games.sort((a,b)=>new Date(a.ev.date)-new Date(b.ev.date));
+
+      // PRIMARY: Use series.competitors wins from the most recent game.
+      // Within a single comp object, series.competitors[i] corresponds positionally
+      // to comp.competitors[i] — same index, same API response, ESPN-guaranteed.
+      let winsSet=false;
+      for(let gi=s.games.length-1;gi>=0;gi--){
+        const{comp}=s.games[gi];
+        const sc=comp.series?.competitors||[];
+        const gc=comp.competitors||[];
+        if(sc.length<2||gc.length<2)continue;
+        // Positional mapping: sc[i] belongs to gc[i].team.id
+        let allFound=true;
+        for(let i=0;i<Math.min(sc.length,gc.length);i++){
+          const tid=String(gc[i]?.team?.id||'');
+          const ct=s.competitors.find(c=>c.id===tid);
+          if(!ct){allFound=false;break;}
+          ct.wins=parseInt(sc[i]?.wins||0);
+        }
+        if(allFound){winsSet=true;break;}
+      }
+
+      // FALLBACK: count gc.winner from completed games if series obj had no win data
+      if(!winsSet||s.competitors.every(c=>c.wins===0&&!s.isDone)){
+        const completedGames=s.games.filter(g=>g.comp?.status?.type?.completed);
+        if(completedGames.length>0){
+          // Reset and recount
+          s.competitors.forEach(c=>c.wins=0);
+          for(const{comp}of completedGames){
+            const gc=comp.competitors||[];
+            // Winner is whichever competitor has winner===true
+            for(const g of gc){
+              if(g.winner===true){
+                const ct=s.competitors.find(c=>c.id===String(g.team?.id));
+                if(ct)ct.wins++;
+              }
+            }
+          }
         }
       }
+
       s.isLive=s.games.some(g=>g.comp?.status?.type?.state==='in');
       s.isDone=s.competitors.some(c=>c.wins>=4);
 
-      // Resolve NHL abbreviation — try espnToNHL map first, then raw ESPN abbr
+      // Resolve NHL abbreviation
       s.competitors.forEach(c=>{
         const espnAbbr=c.team?.abbreviation||'';
         c.nhl=espnToNHL[espnAbbr]||espnAbbr||'?';
       });
 
-      // Conference: use robust dual-lookup (fixes TB→E, NJ→E, etc.)
+      // Conference
       const c0=s.competitors[0];
-      s.conf=resolveConf(c0.nhl, c0.team?.abbreviation||'');
+      s.conf=resolveConf(c0.nhl,c0.team?.abbreviation||'');
 
       // Game navigation helpers
       s.nextGame=s.games.find(g=>!g.comp?.status?.type?.completed&&g.comp?.status?.type?.state!=='in');
       s.liveGame=s.games.find(g=>g.comp?.status?.type?.state==='in');
-      s.lastDoneGame=s.games
-        .filter(g=>g.comp?.status?.type?.completed)
-        .sort((a,b)=>new Date(b.ev.date)-new Date(a.ev.date))[0];
+      s.lastDoneGame=[...s.games].reverse().find(g=>g.comp?.status?.type?.completed)||null;
       s.gameCount=s.games.length;
     }
+
 
     // ── Bucket by round & conference ──
     const ER1=[],ER2=[],ECF=[],WR1=[],WR2=[],WCF=[];let SCF=null;
