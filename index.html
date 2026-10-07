@@ -254,6 +254,23 @@ body::after{
 .yt small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
 .yb{background:rgba(204,0,0,.1);border:1px solid rgba(204,0,0,.2);border-radius:4px;
   padding:2px 6px;font-size:9px;font-weight:700;color:var(--yt);letter-spacing:.5px;flex-shrink:0}
+
+/* ── HIGHLIGHT PREVIEW CARD ── */
+#ytBox{margin-top:14px}
+#ytBox .yt-btn{margin-top:0}
+.yt-card{border:1.5px solid var(--yt-border);border-radius:11px;overflow:hidden;background:var(--yt-bg)}
+.yt-thumb{position:relative;aspect-ratio:16/9;background:#000;cursor:pointer}
+.yt-thumb img,.yt-thumb iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
+.yt-play{position:absolute;left:50%;top:50%;width:54px;height:38px;margin:-19px 0 0 -27px;
+  background:#cc0000;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.yt-thumb:hover .yt-play{transform:scale(1.1)}
+.yt-thumb.playing{cursor:default}
+.yt-meta{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.yt-title{font-size:12px;font-weight:600;line-height:1.35;color:var(--text)}
+.yt-open{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;
+  color:var(--yt);text-decoration:none}
+.yt-open:hover{text-decoration:underline}
 .sub-link{
   display:flex;align-items:center;justify-content:center;gap:6px;
   width:100%;padding:9px 14px;margin-top:7px;
@@ -811,7 +828,8 @@ function step(m) { const el=document.getElementById('ls'); if(el) el.textContent
   try {
     // ESPN's v2 standings — same domain as all our other working calls
     const r = await fetch(
-      'https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=2026&type=0&level=3',
+      // Season year = year the season ends; NHL starts in October so Oct+ → next calendar year
+      `https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=${new Date().getMonth()>=9?new Date().getFullYear()+1:new Date().getFullYear()}&type=0&level=3`,
       { signal: AbortSignal.timeout(8000) }
     );
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -870,24 +888,35 @@ function step(m) { const el=document.getElementById('ls'); if(el) el.textContent
 })();
 
 // ── Live score updater ────────────────────────────────────────────
-function startLivePoller(espnId, myId, tok) {
+function startLivePoller(teamAbbr, tok) {
   if (livePoller) clearInterval(livePoller);
   livePoller = setInterval(async () => {
     if (tok !== loadToken) { clearInterval(livePoller); return; }
     try {
-      const r = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${espnId}/schedule`,
-        { signal: AbortSignal.timeout(6000) }
+      const scoreUrl = 'https://api-web.nhle.com/v1/score/now';
+      let d;
+      try {
+        const r = await fetch(scoreUrl, {signal: AbortSignal.timeout(6000)});
+        d = await r.json();
+      } catch(_) {
+        const r2 = await fetch(
+          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(scoreUrl)}`,
+          {signal: AbortSignal.timeout(9000)}
+        );
+        d = await r2.json();
+      }
+      const liveGame = (d.games||[]).find(g =>
+        (g.homeTeam?.abbrev===teamAbbr || g.awayTeam?.abbrev===teamAbbr) &&
+        (g.gameState==='LIVE' || g.gameState==='CRIT')
       );
-      const d = await r.json();
-      const liveEv = (d.events||[]).find(ev => ev.competitions?.[0]?.status?.type?.state === 'in');
-      if (!liveEv) { clearInterval(livePoller); return; }
-      const comp   = liveEv.competitions[0];
-      const mine   = comp.competitors.find(c => String(c.team.id) === myId);
-      const opp    = comp.competitors.find(c => String(c.team.id) !== myId);
-      const myS    = parseScore(mine?.score) ?? '–';
-      const oppS   = parseScore(opp?.score)  ?? '–';
-      const detail = comp.status?.type?.detail || 'LIVE';
+      if (!liveGame) { clearInterval(livePoller); return; }
+      const isHome = liveGame.homeTeam?.abbrev === teamAbbr;
+      const myS    = (isHome ? liveGame.homeTeam?.score : liveGame.awayTeam?.score) ?? '–';
+      const oppS   = (isHome ? liveGame.awayTeam?.score : liveGame.homeTeam?.score) ?? '–';
+      const pd     = liveGame.periodDescriptor;
+      const pLabel = pd ? (pd.periodType==='OT'?'OT':pd.periodType==='SO'?'SO':`P${pd.number}`) : 'LIVE';
+      const clock  = liveGame.clock?.timeRemaining ? ` · ${liveGame.clock.timeRemaining}` : '';
+      const detail = pLabel + clock;
       const block  = document.getElementById('liveScoreBlock');
       if (!block) { clearInterval(livePoller); return; }
       block.querySelector('.live-my-score').textContent  = myS;
@@ -898,74 +927,49 @@ function startLivePoller(espnId, myId, tok) {
 }
 async function loadTeam(t, tok) {
   try {
-    await espnReady;                       // already resolved, instant
     if (tok !== loadToken) return;
-
-    // If init failed (rare), try building the map now
-    if (!espnIdMap[t.a]) {
-      step('Looking up team…');
-      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',
-        {signal:AbortSignal.timeout(8000)});
-      const d = await r.json();
-      for (const {team:e} of d.sports[0].leagues[0].teams) {
-        const m = TEAMS.find(x => x.n.toLowerCase()===(e.name||'').toLowerCase());
-        if (m) { espnIdMap[m.a]=e.id; espnToNHL[e.abbreviation]=m.a; }
-      }
-    }
-    if (tok !== loadToken) return;
-
-    const eid = espnIdMap[t.a];
-    if (!eid) throw new Error(`ESPN has no record for ${t.a}. The team list may not have loaded — try again.`);
-
     step('Fetching schedule…');
 
-    const r = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${eid}/schedule`,
-      {signal:AbortSignal.timeout(8000)}
-    );
-    if (!r.ok) throw new Error(`ESPN returned HTTP ${r.status}`);
-    const data = await r.json();
+    // Use NHL's own public API.
+    // IMPORTANT: /now redirects (307) and Firefox drops CORS on the redirect → use
+    // explicit season ID to call the final URL directly with no redirect at all.
+    const _yr = new Date().getMonth() >= 9 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+    const nhlUrl = `https://api-web.nhle.com/v1/club-schedule-season/${t.a}/${_yr}${_yr+1}`;
+    let data;
+    try {
+      data = await fetchJsonCORS(nhlUrl, j => Array.isArray(j?.games));
+    } catch (_) {
+      const local = location.protocol === 'file:'
+        ? ' You opened this page as a local file (file://), which many APIs block. Run a tiny local server instead: open a terminal in this folder, run  python -m http.server 8000  and visit  http://localhost:8000'
+        : '';
+      throw new Error('NHL schedule unavailable — please try again.' + local);
+    }
     if (tok !== loadToken) return;
 
-    const past=[], future=[];
-    for (const ev of (data.events||[])) {
-      const comp  = ev.competitions?.[0];
-      const state = comp?.status?.type?.state||'';
-      if (comp?.status?.type?.completed)            past.push(ev);
-      else if (state==='pre' || state==='in') future.push(ev);
-    }
-    past.sort((a,b)   => new Date(a.date)-new Date(b.date));
-    future.sort((a,b) => new Date(a.date)-new Date(b.date));
+    const games = data.games || [];
+    const past    = games.filter(g => g.gameState==='OFF' || g.gameState==='FINAL');
+    const future  = games.filter(g => g.gameState==='FUT' || g.gameState==='PRE' ||
+                                      g.gameState==='LIVE' || g.gameState==='CRIT');
+    past.sort((a,b)   => new Date(a.startTimeUTC)-new Date(b.startTimeUTC));
+    future.sort((a,b) => new Date(a.startTimeUTC)-new Date(b.startTimeUTC));
 
-    renderPanel(t, eid, past.at(-1)||null, future[0]||null);
+    renderPanel(t, past.at(-1)||null, future[0]||null);
 
     // Start live score polling if next game is currently live
-    if (future[0]) {
-      const liveComp = future[0].competitions?.[0];
-      if (liveComp?.status?.type?.state === 'in') {
-        startLivePoller(eid, String(eid), tok);
-      }
+    const nextGame = future[0];
+    if (nextGame && (nextGame.gameState==='LIVE' || nextGame.gameState==='CRIT')) {
+      startLivePoller(t.a, tok);
     }
 
-    // YouTube lookup — non-blocking
-    // Pass team objects directly — no string parsing, guaranteed correct nicknames
+    // YouTube lookup — non-blocking, uses NHL abbreviations directly
     const lastGame = past.at(-1);
     if (lastGame) {
-      const comp    = lastGame.competitions?.[0];
-      const myComp  = comp?.competitors?.find(c => String(c.team.id) === String(eid));
-      const oppComp = comp?.competitors?.find(c => String(c.team.id) !== String(eid));
-      const oppNHL  = TEAMS.find(x => x.a === (espnToNHL[oppComp?.team?.abbreviation] || ''));
-      findHighlight(t, oppNHL || {n: oppComp?.team?.shortDisplayName || oppComp?.team?.abbreviation || '?'}, myComp?.homeAway === 'home', new Date(lastGame.date)).then(yt => {
-        if (tok !== loadToken) return;
-        const btn = document.getElementById('ytBtn');
-        if (!btn) return;
-        btn.href = yt.url;
-        btn.classList.remove('searching');
-        const lbl = (yt.label||'').length>52 ? yt.label.slice(0,52)+'…' : yt.label;
-        btn.innerHTML = yt.direct
-          ? `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">DIRECT LINK</span>`
-          : `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">SEARCH</span>`;
-      });
+      const isHome  = lastGame.homeTeam?.abbrev === t.a;
+      const oppAbbr = isHome ? lastGame.awayTeam?.abbrev : lastGame.homeTeam?.abbrev;
+      const oppTeam = TEAMS.find(x => x.a === oppAbbr) || {a: oppAbbr, n: oppAbbr};
+      findHighlight(t, oppTeam, isHome, new Date(lastGame.startTimeUTC))
+        .then(yt => { if (tok === loadToken) renderHighlight(yt); })
+        .catch(() => {});
     }
 
   } catch(e) {
@@ -984,15 +988,26 @@ async function loadTeam(t, tok) {
 }
 
 function retryTeam(abbr) {
-  espnIdMap = {};
   const t = TEAMS.find(x => x.a===abbr);
   if (t) selectTeam(t);
 }
 
 // ── YouTube highlight lookup ──────────────────────────────────────
-const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';
+// WHY THE OLD VERSION FAILED
+//  • youtube.com/feeds/... sends no CORS headers → direct fetch() always blocked
+//  • the RSS feed only holds the ~15 newest NHL uploads (a day or so of games)
+//  • public Invidious instances are mostly dead / have no CORS
+//  • the HTML scrape matched ANY video that mentioned both teams (even older
+//    meetings) and was always reported as "DIRECT LINK"
+//  • there was no preview at all, only a link
+// NEW: every source goes through CORS proxies, results are scored/validated by
+//  team names + date, and the UI shows a thumbnail + inline player.
+const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';   // official NHL channel
+// OPTIONAL but the most reliable option: a free YouTube Data API v3 key
+// (console.cloud.google.com → enable "YouTube Data API v3" → Create API key).
+// The API allows direct browser calls (no proxy), 100 searches/day free.
+const YT_API_KEY = '';
 
-// Exact nicknames from official NHL team reference table
 const YT_NICK = {
   ANA:'Ducks',          BOS:'Bruins',         BUF:'Sabres',
   CGY:'Flames',         CAR:'Hurricanes',      CHI:'Blackhawks',
@@ -1007,75 +1022,243 @@ const YT_NICK = {
   WSH:'Capitals',       WPG:'Jets',
 };
 
+const CORS_PROXIES = [
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.org/?${encodeURIComponent(u)}`,
+  u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
+  u => `https://yacdn.org/proxy/${u}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+];
+
+// JSON fetch: direct first, then every proxy in parallel (first valid answer wins).
+async function fetchJsonCORS(url, validate = () => true) {
+  try {
+    const r = await fetch(url, {signal: AbortSignal.timeout(7000)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (validate(j)) return j;
+  } catch (e) { console.warn('[fetch] direct failed:', url, e?.message || e); }
+  const txt = await fetchViaProxies(url, t => { try { return validate(JSON.parse(t)); } catch { return false; } }, 12000);
+  return JSON.parse(txt);
+}
+
+// Fetch text through all proxies in parallel; first one whose body passes `validate` wins.
+function fetchViaProxies(url, validate, ms = 9000) {
+  return Promise.any(CORS_PROXIES.map(mk =>
+    fetch(mk(url), {signal: AbortSignal.timeout(ms)})
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(txt => { if (!validate(txt)) throw new Error('bad body'); return txt; })
+  ));
+}
+
+// ── parsers → [{id,title,channel,pubMs?,ago?}] ──
+function parseYtSearchHtml(html) {
+  const m = html.match(/var ytInitialData\s*=\s*(\{[\s\S]+?\});\s*<\/script>/);
+  if (!m) throw new Error('no ytInitialData');
+  const data = JSON.parse(m[1]);
+  const out = [];
+  (function walk(o) {
+    if (!o || typeof o !== 'object') return;
+    if (o.videoRenderer) {
+      const v = o.videoRenderer;
+      out.push({
+        id: v.videoId,
+        title: (v.title?.runs || []).map(r => r.text).join('') || v.title?.simpleText || '',
+        channel: v.ownerText?.runs?.[0]?.text || v.longBylineText?.runs?.[0]?.text || '',
+        ago: v.publishedTimeText?.simpleText || '',
+      });
+      return;
+    }
+    for (const k in o) walk(o[k]);
+  })(data);
+  return out;
+}
+
+function parseYtRss(xml) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  return [...doc.getElementsByTagName('entry')].map(en => ({
+    id: en.getElementsByTagName('yt:videoId')[0]?.textContent
+        || (en.querySelector('link')?.getAttribute('href') || '').split('v=')[1] || '',
+    title: en.getElementsByTagName('title')[0]?.textContent || '',
+    channel: 'NHL',
+    pubMs: new Date(en.getElementsByTagName('published')[0]?.textContent || '').getTime(),
+  }));
+}
+
+// "3 days ago", "Streamed 5 hours ago" → approximate age in ms
+function agoToMs(txt) {
+  const m = /(\d+)\s*(second|minute|hour|day|week|month|year)/i.exec(txt || '');
+  if (!m) return null;
+  const U = {second:1e3, minute:6e4, hour:36e5, day:864e5, week:6048e5, month:2592e6, year:31536e6};
+  return +m[1] * U[m[2].toLowerCase()];
+}
+
+// ── decide whether a candidate is THE highlight clip for this exact game ──
+function scoreCandidate(c, ctx) {
+  if (!c.id || !c.title) return -1;
+  const tl = c.title.toLowerCase();
+  const hasNick = n => { n = n.toLowerCase(); const last = n.split(' ').pop();
+                         return tl.includes(n) || tl.includes(last); };
+  if (!hasNick(ctx.awayNick) || !hasNick(ctx.homeNick)) return -1;
+  if (!/highlight|recap/.test(tl)) return -1;
+  if (/full game|press conference|post-?game|interview|top \d|best of/.test(tl)) return -1;
+
+  let score = 1;
+
+  // Date check 1 — NHL puts the game date in the title
+  const dateInTitle = ctx.dateVariants.some(d => tl.includes(d));
+  const otherDate = /(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(tl);
+  if (dateInTitle) score += 6;
+  else if (otherDate) return -1;                    // a different day → an older/newer meeting
+
+  // Date check 2 — publish time
+  const age = Date.now() - ctx.gameMs;
+  if (c.pubMs) {
+    const d = (c.pubMs - ctx.gameMs) / 864e5;
+    if (d < -0.5 || d > 4) { if (!dateInTitle) return -1; } else score += 2;
+  } else if (c.ago && !dateInTitle) {
+    const a = agoToMs(c.ago);
+    if (a !== null) {
+      // clip is published after the game, so its age is slightly LESS than the game's age
+      const tol = Math.max(2 * 864e5, age * 0.3);
+      if (Math.abs(a - age) > tol) return -1;
+      score += 1;
+    }
+  }
+
+  if (/nhl highlights/.test(tl)) score += 3;
+  if (/sportsnet/i.test(c.channel || '')) score += 4;
+  else if (/^nhl$/i.test((c.channel || '').trim())) score += 3;
+  else if (/nhl/i.test(c.channel || '')) score += 1;
+  return score;
+}
+
 async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const myNick   = YT_NICK[myTeam.a]  || myTeam.n;
   const oppNick  = YT_NICK[oppTeam.a] || oppTeam.n;
   const awayNick = iAmHome ? oppNick : myNick;
   const homeNick = iAmHome ? myNick  : oppNick;
 
-  // ET date — game-night date matching NHL YouTube title format
-  const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
-    month:'long',day:'2-digit',year:'numeric'}).formatToParts(gameDate);
-  const dateStr = `${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
+  // ET game-night date ("October 5, 2026" + numeric variants)
+  const ET = {timeZone:'America/New_York'};
+  const mo = new Intl.DateTimeFormat('en-US',{...ET, month:'long'}).format(gameDate).toLowerCase();
+  const dy = +new Intl.DateTimeFormat('en-US',{...ET, day:'numeric'}).format(gameDate);
+  const yr = +new Intl.DateTimeFormat('en-US',{...ET, year:'numeric'}).format(gameDate);
+  const mn = +new Intl.DateTimeFormat('en-US',{...ET, month:'numeric'}).format(gameDate);
+  const dateVariants = [`${mo} ${dy}, ${yr}`, `${mo} ${dy} ${yr}`, `${mn}/${dy}/${yr}`, `${mn}/${dy}/${String(yr).slice(2)}`];
+  const dateStr  = `${mo[0].toUpperCase()+mo.slice(1)} ${dy}, ${yr}`;
 
-  const titleStr    = `${awayNick} vs. ${homeNick} | NHL Highlights | ${dateStr}`;
-  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(titleStr)}`;
+  // Sportsnet's title format: "NHL Highlights | Predators vs. Maple Leafs - October 6, 2026"
+  const titleStr  = `NHL Highlights | ${awayNick} vs. ${homeNick} - ${dateStr}`;
+  const searchQ   = titleStr;
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ)}`;
+  const ctx = {awayNick, homeNick, gameMs: gameDate.getTime(), dateVariants};
+  const warn = name => e => { console.warn('[highlight]', name, 'failed:', e?.message || e); throw e; };
 
-  // Extract videoId from HTML — look for one contextually near both team names
-  function extractVideoId(html) {
-    if (!html) return null;
-    const hl = html.toLowerCase();
-    const away = awayNick.toLowerCase(), home = homeNick.toLowerCase();
-    const allIds = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-    for (const m of allIds) {
-      const ctx = hl.slice(Math.max(0, m.index - 400), m.index + 400);
-      if (ctx.includes(away) && ctx.includes(home)) return m[1];
-    }
-    return allIds[0]?.[1] || null;
+  const pick = list => {
+    let best = null, bs = 0;
+    for (const c of list) { const sc = scoreCandidate(c, ctx); if (sc > bs) { bs = sc; best = c; } }
+    if (!best) throw new Error('no matching video among ' + list.length + ' results');
+    console.info('[highlight] matched:', best.title, best.id);
+    return {id: best.id, url: `https://www.youtube.com/watch?v=${best.id}`, direct: true, label: best.title};
+  };
+  const unesc = t => { const d = document.createElement('textarea'); d.innerHTML = t; return d.value; };
+
+  const sources = [];
+
+  // Source 0 — official YouTube Data API (only if a key is configured). Direct, no proxy.
+  if (YT_API_KEY) {
+    const after = new Date(gameDate.getTime() - 12 * 36e5).toISOString();
+    sources.push(
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=15` +
+            `&publishedAfter=${encodeURIComponent(after)}&q=${encodeURIComponent(searchQ)}&key=${YT_API_KEY}`,
+            {signal: AbortSignal.timeout(8000)})
+        .then(r => { if (!r.ok) throw new Error('API HTTP ' + r.status); return r.json(); })
+        .then(j => pick((j.items || []).map(i => ({
+          id: i.id?.videoId, title: unesc(i.snippet?.title || ''),
+          channel: i.snippet?.channelTitle, pubMs: new Date(i.snippet?.publishedAt).getTime()}))))
+        .catch(warn('YouTube API')));
   }
 
-  // ── Race RSS + two scrape proxies all at once — first win takes it ──
-  const rssPromise = (async () => {
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`;
-    const xml = await Promise.any([
-      fetch(rssUrl, {signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)throw 0;return r.text();}),
-      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-        {signal:AbortSignal.timeout(4000)}).then(r=>r.json()).then(d=>d.contents||''),
-    ]);
-    const doc = new DOMParser().parseFromString(xml, 'application/xml');
-    for (const en of doc.querySelectorAll('entry')) {
-      const title = en.querySelector('title')?.textContent || '';
-      const diff  = (new Date(en.querySelector('published')?.textContent||'') - gameDate) / 86400000;
-      if (diff < 0 || diff > 2) continue;
-      const tl = title.toLowerCase();
-      if (!tl.includes(awayNick.toLowerCase()) || !tl.includes(homeNick.toLowerCase()) || !tl.includes('nhl highlight')) continue;
-      const link = en.querySelector('link')?.getAttribute('href') || '';
-      if (link.includes('youtube.com/watch')) return {url:link, direct:true, label:title};
-    }
-    throw new Error('no RSS match');
-  })();
+  // Source A — Piped search API (open-source YouTube front-end; sends CORS headers)
+  sources.push(Promise.any(
+    ['https://pipedapi.kavin.rocks', 'https://api.piped.private.coffee', 'https://pipedapi.adminforge.de']
+      .map(base => fetch(`${base}/search?q=${encodeURIComponent(searchQ)}&filter=videos`,
+                         {signal: AbortSignal.timeout(8000)})
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }))
+  ).then(j => pick((j.items || []).map(v => ({
+      id: (v.url || '').split('v=')[1], title: v.title, channel: v.uploaderName,
+      pubMs: v.uploaded > 0 ? v.uploaded : undefined, ago: v.uploadedDate || ''}))))
+   .catch(warn('Piped')));
 
-  const scrapeA = fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`,
-    {signal:AbortSignal.timeout(5000)})
-    .then(r=>r.json()).then(d=>{
-      const vid = extractVideoId(d.contents||'');
-      if (!vid) throw new Error('no id');
-      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
-    });
+  // Source B — YouTube search page through CORS proxies (any game date)
+  sources.push(fetchViaProxies(
+      `${searchUrl}&sp=EgIQAQ%253D%253D&hl=en&gl=US`, t => t.includes('ytInitialData'), 10000)
+    .then(html => pick(parseYtSearchHtml(html)))
+    .catch(warn('search page')));
 
-  const scrapeB = fetch(`https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
-    {signal:AbortSignal.timeout(5000)})
-    .then(r=>{if(!r.ok)throw 0;return r.text();}).then(html=>{
-      const vid = extractVideoId(html);
-      if (!vid) throw new Error('no id');
-      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
-    });
+  // Source C — NHL channel RSS via proxies (only the newest ~15 uploads)
+  sources.push(fetchViaProxies(
+      `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`, t => t.includes('<entry'), 8000)
+    .then(xml => pick(parseYtRss(xml)))
+    .catch(warn('NHL RSS')));
+
+  // Source D — Invidious search API
+  sources.push(Promise.any(
+    ['https://inv.nadeko.net', 'https://yewtu.be', 'https://invidious.privacyredirect.com'].map(base =>
+      fetch(`${base}/api/v1/search?q=${encodeURIComponent(searchQ)}&type=video`,
+            {signal: AbortSignal.timeout(7000)})
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }))
+  ).then(arr => pick(arr.map(v => ({id: v.videoId, title: v.title, channel: v.author,
+                                    pubMs: (v.published || 0) * 1000}))))
+   .catch(warn('Invidious')));
 
   try {
-    return await Promise.any([rssPromise, scrapeA, scrapeB]);
-  } catch(_) {
-    return {url:searchUrl, direct:false, label:titleStr};
+    return await Promise.any(sources);
+  } catch (_) {
+    console.warn('[highlight] all sources failed → search-link fallback');
+    return {url: searchUrl, direct: false, label: titleStr};
   }
+}
+
+// Render the result in the "Last Game" card: thumbnail + inline player + link
+function renderHighlight(yt) {
+  const box = document.getElementById('ytBox');
+  if (!box) return;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  if (!yt.direct) {
+    box.innerHTML = `
+      <a class="yt-btn" href="${esc(yt.url)}" target="_blank" rel="noopener">
+        <div class="yi">${YT}</div>
+        <div class="yt"><span>Search YouTube for highlights</span><small>Clip not found automatically</small></div>
+        <span class="yb">SEARCH</span>
+      </a>`;
+    return;
+  }
+  const canEmbed = location.protocol !== 'file:';   // YouTube refuses embeds from file:// pages
+  box.innerHTML = `
+    <div class="yt-card">
+      <div class="yt-thumb" id="ytThumb" role="button" tabindex="0" aria-label="Play highlight">
+        <img src="https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg" alt="Highlight preview"
+             onerror="this.src='https://i.ytimg.com/vi/${yt.id}/mqdefault.jpg'">
+        <span class="yt-play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span>
+      </div>
+      <div class="yt-meta">
+        <div class="yt-title">${esc(yt.label)}</div>
+        <a class="yt-open" href="${esc(yt.url)}" target="_blank" rel="noopener">${YT}<span>Open on YouTube</span></a>
+      </div>
+    </div>`;
+  const thumb = document.getElementById('ytThumb');
+  const play = () => {
+    if (!canEmbed) { window.open(yt.url, '_blank', 'noopener'); return; }
+    thumb.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${yt.id}?autoplay=1&rel=0"
+      title="NHL highlight" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+      allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
+    thumb.classList.add('playing');
+  };
+  thumb.addEventListener('click', play);
+  thumb.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); } });
 }
 
 // ── SVGs ──────────────────────────────────────────────────────────
@@ -1086,23 +1269,26 @@ const HOM = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke=
 const TVS = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>`;
 
 // ── Render ────────────────────────────────────────────────────────
-function renderPanel(t, espnId, last, next) {
-  const myId = String(espnId);
+// Receives NHL API game objects directly (api-web.nhle.com format)
+function renderPanel(t, last, next) {
 
   // Next game card
   const nextHTML = (() => {
     if (!next) return `<p class="no-game">No upcoming games scheduled.</p>`;
-    const comp   = next.competitions[0];
-    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
-    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
-    const isHome = mine?.homeAway==='home';
-    const oppT   = opp?.team||{};
-    const {date,time,localTime} = fmtDate(next.date);
-    const venue  = comp.venue?.fullName||'';
-    const isLive = comp.status?.type?.state==='in';
-    const detail = comp.status?.type?.detail||'LIVE';
-    const myS    = parseScore(mine?.score) ?? '–';
-    const oppS   = parseScore(opp?.score)  ?? '–';
+    const isHome  = next.homeTeam?.abbrev === t.a;
+    const opp     = isHome ? next.awayTeam : next.homeTeam;
+    const oppAbbr = opp?.abbrev || '?';
+    const oppTeam = TEAMS.find(x => x.a === oppAbbr);
+    const oppName = oppTeam ? `${oppTeam.c} ${oppTeam.n}` : oppAbbr;
+    const isLive  = next.gameState==='LIVE' || next.gameState==='CRIT';
+    const {date, localTime} = fmtDate(next.startTimeUTC);
+    const venue   = next.venue?.default || '';
+    const myS     = (isHome ? next.homeTeam?.score : next.awayTeam?.score) ?? '–';
+    const oppS    = (isHome ? next.awayTeam?.score : next.homeTeam?.score) ?? '–';
+    const pd      = next.periodDescriptor;
+    const pLabel  = pd ? (pd.periodType==='OT'?'OT':pd.periodType==='SO'?'SO':`P${pd.number}`) : 'LIVE';
+    const clock   = next.clock?.timeRemaining ? ` · ${next.clock.timeRemaining}` : '';
+    const detail  = pLabel + clock;
 
     const liveScoreHTML = isLive ? `
       <div class="live-score-block" id="liveScoreBlock">
@@ -1113,9 +1299,9 @@ function renderPanel(t, espnId, last, next) {
         </div>
         <div class="sc-sep"><span>–</span><div class="live-period">${detail}</div></div>
         <div class="sc-team">
-          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px">
+          <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px">
           <div class="sc-num live-opp-score">${oppS}</div>
-          <div class="ab">${oppT.abbreviation||'?'}</div>
+          <div class="ab">${oppAbbr}</div>
         </div>
       </div>` : '';
 
@@ -1123,8 +1309,8 @@ function renderPanel(t, espnId, last, next) {
       ${isLive?`<div class="live-badge"><span class="live-dot"></span>LIVE · ${detail}</div>`:''}
       ${liveScoreHTML}
       <div class="vs-row">
-        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
-        <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
+        <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'">
+        <div class="opp"><h3>VS ${oppAbbr}</h3><p>${oppName}</p></div>
         <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
       </div>
       <hr class="divider">
@@ -1136,17 +1322,18 @@ function renderPanel(t, espnId, last, next) {
   // Last game card
   const lastHTML = (() => {
     if (!last) return `<p class="no-game">No recent game data found.</p>`;
-    const comp   = last.competitions[0];
-    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
-    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
-    const isHome = mine?.homeAway==='home';
-    const oppT   = opp?.team||{};
-    const myS    = parseScore(mine?.score);
-    const oppS   = parseScore(opp?.score);
-    const hasS   = myS!==null&&oppS!==null;
-    const won    = mine?.winner===true;
-    const {date} = fmtDate(last.date);
-    const status = comp.status?.type?.shortDetail||comp.status?.type?.description||'Final';
+    const isHome  = last.homeTeam?.abbrev === t.a;
+    const opp     = isHome ? last.awayTeam : last.homeTeam;
+    const oppAbbr = opp?.abbrev || '?';
+    const oppTeam = TEAMS.find(x => x.a === oppAbbr);
+    const oppName = oppTeam ? `${oppTeam.c} ${oppTeam.n}` : oppAbbr;
+    const myS     = isHome ? (last.homeTeam?.score ?? null) : (last.awayTeam?.score ?? null);
+    const oppS    = isHome ? (last.awayTeam?.score ?? null) : (last.homeTeam?.score ?? null);
+    const hasS    = myS !== null && oppS !== null;
+    const won     = hasS && myS > oppS;
+    const {date}  = fmtDate(last.startTimeUTC);
+    const lastPd  = last.gameOutcome?.lastPeriodType;
+    const status  = lastPd==='OT' ? 'Final/OT' : lastPd==='SO' ? 'Final/SO' : 'Final';
 
     const scoreHTML = hasS ? `
       <div class="score-block ${won?'wb':'lb'}">
@@ -1157,30 +1344,31 @@ function renderPanel(t, espnId, last, next) {
         </div>
         <div class="sc-sep"><span>–</span><div class="sc-per">${status}</div></div>
         <div class="sc-team">
-          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+          <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'">
           <div class="sc-num">${oppS}</div>
-          <div class="ab">${oppT.abbreviation||'?'}</div>
+          <div class="ab">${oppAbbr}</div>
         </div>
       </div>
       <div class="chip ${won?'w':'l'}">${won?'✓ WIN':'✗ LOSS'}</div>` : '';
 
     return `
       <div class="vs-row">
-        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
-        <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
+        <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'">
+        <div class="opp"><h3>VS ${oppAbbr}</h3><p>${oppName}</p></div>
         <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
       </div>
       ${scoreHTML}
       <hr class="divider">
       <div class="info-row">${CAL}<strong>${date}</strong></div>
-      <a id="ytBtn" href="#" target="_blank" rel="noopener" class="yt-btn searching"
-         onclick="if(this.href==='#'||this.href.endsWith('#')){event.preventDefault()}">
-        <div class="yi">${YT}</div>
-        <div class="yt"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div>
-        <span class="yb">LOADING</span>
-      </a>
-      <a href="https://www.espn.com/nhl/game/_/gameId/${last.id}" target="_blank" rel="noopener" class="sub-link">
-        ${TVS} View full recap on ESPN
+      <div id="ytBox">
+        <div class="yt-btn searching">
+          <div class="yi">${YT}</div>
+          <div class="yt"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div>
+          <span class="yb">LOADING</span>
+        </div>
+      </div>
+      <a href="https://www.nhl.com/gamecenter/${last.id}" target="_blank" rel="noopener" class="sub-link">
+        ${TVS} View full recap on NHL.com
       </a>`;
   })();
 
