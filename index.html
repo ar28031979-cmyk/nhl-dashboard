@@ -996,7 +996,7 @@ function retryTeam(abbr) {
 }
 
 // ── YouTube highlight lookup ──────────────────────────────────────
-const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';   // official NHL channel
+const YT_SN = 'UCVhibwHk4WKw4leUt6JfRLg';   // SPORTSNET channel (youtube.com/@sportsnet)
 // OPTIONAL: your own CORS proxy URL (leave empty to use the public ones).
 const PROXY_URL = '';
 
@@ -1045,75 +1045,126 @@ function fetchViaProxies(url, validate, ms = 9000) {
   ));
 }
 
+// Sportsnet titles look like:  "NHL Highlights | Away vs. Home – October 6, 2026"
+const _ytCache = new Map();
+// Fetch a YouTube page/feed through the two proxies that work for this page (first valid answer wins).
+function ytGet(url, marker, tryDirect = false) {
+  const hit = _ytCache.get(url);
+  if (hit && Date.now() - hit.t < 300000) return hit.p;
+  const ok = t => typeof t === 'string' && t.includes(marker);
+  const tries = [
+    fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, {signal: AbortSignal.timeout(10000)})
+      .then(r => { if (!r.ok) throw new Error('allorigins HTTP ' + r.status); return r.json(); })
+      .then(d => { if (!ok(d.contents)) throw new Error('allorigins: unexpected page'); return d.contents; }),
+    fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`, {signal: AbortSignal.timeout(10000)})
+      .then(r => { if (!r.ok) throw new Error('corsproxy.io HTTP ' + r.status); return r.text(); })
+      .then(t => { if (!ok(t)) throw new Error('corsproxy.io: unexpected page'); return t; }),
+  ];
+  if (tryDirect) tries.push(
+    fetch(url, {signal: AbortSignal.timeout(6000)})
+      .then(r => { if (!r.ok) throw new Error('direct HTTP ' + r.status); return r.text(); })
+      .then(t => { if (!ok(t)) throw new Error('direct: unexpected page'); return t; }));
+  const p = Promise.any(tries);
+  _ytCache.set(url, {t: Date.now(), p});
+  p.catch(() => _ytCache.delete(url));
+  return p;
+}
+
+// YouTube page (channel search results) → [{id,title}]
+function ytCandidatesFromHtml(html) {
+  const out = [], seen = new Set();
+  const add = (id, title) => { if (id && title && !seen.has(id + title)) { seen.add(id + title); out.push({id, title}); } };
+  const m = html.match(/var ytInitialData\s*=\s*(\{[\s\S]+?\});\s*<\/script>/);
+  if (m) {
+    try {
+      (function walk(o) {
+        if (!o || typeof o !== 'object') return;
+        if (o.videoRenderer) {
+          const v = o.videoRenderer;
+          add(v.videoId, (v.title?.runs || []).map(r => r.text).join('') || v.title?.simpleText || '');
+        } else if (o.lockupViewModel?.contentId) {          // newer YouTube layout
+          const l = o.lockupViewModel;
+          add(l.contentId, l.metadata?.lockupMetadataViewModel?.title?.content || '');
+        }
+        for (const k in o) walk(o[k]);
+      })(JSON.parse(m[1]));
+    } catch (_) {}
+  }
+  if (!out.length) {                                        // fallback: raw text scan
+    const re = /NHL Highlights(?:[^"\\]|\\.){3,200}/g;
+    let t;
+    while ((t = re.exec(html))) {
+      let title = t[0]; try { title = JSON.parse('"' + title + '"'); } catch (_) {}
+      const ids = [...html.slice(Math.max(0, t.index - 3000), t.index).matchAll(/"(?:videoId|contentId)":"([\w-]{11})"/g)];
+      if (ids.length) add(ids[ids.length - 1][1], title);
+    }
+  }
+  return out;
+}
+
+// Channel RSS feed → [{id,title}]  (newest ~15 uploads)
+function ytCandidatesFromRss(xml) {
+  const dec = x => x.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+  return [...xml.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map(m => ({
+    id: (/<yt:videoId>([\w-]{11})<\/yt:videoId>/.exec(m[1]) || [])[1],
+    title: dec((/<title>([\s\S]*?)<\/title>/.exec(m[1]) || [])[1] || ''),
+  })).filter(c => c.id && c.title);
+}
+
 async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const myNick   = YT_NICK[myTeam.a]  || myTeam.n;
   const oppNick  = YT_NICK[oppTeam.a] || oppTeam.n;
   const awayNick = iAmHome ? oppNick : myNick;
   const homeNick = iAmHome ? myNick  : oppNick;
 
-  // ET date — game-night date matching NHL YouTube title format
-  const p = new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',
-    month:'long',day:'2-digit',year:'numeric'}).formatToParts(gameDate);
-  const dateStr = `${p.find(x=>x.type==='month').value} ${p.find(x=>x.type==='day').value}, ${p.find(x=>x.type==='year').value}`;
+  // Game-night date in ET → "October 6, 2026" (no zero padding, as Sportsnet writes it)
+  const ET = {timeZone: 'America/New_York'};
+  const part = o => new Intl.DateTimeFormat('en-US', {...ET, ...o}).format(gameDate);
+  const monthName = part({month: 'long'}), day = +part({day: 'numeric'}), year = +part({year: 'numeric'});
+  const gameDay = Date.UTC(year, +part({month: 'numeric'}) - 1, day);
+  const dateStr = `${monthName} ${day}, ${year}`;
 
-  const titleStr    = `${awayNick} vs. ${homeNick} | NHL Highlights | ${dateStr}`;
-  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(titleStr)}`;
+  const titleStr = `NHL Highlights | ${awayNick} vs. ${homeNick} – ${dateStr}`;
+  const chanSearch = q => `https://www.youtube.com/channel/${YT_SN}/search?query=${encodeURIComponent(q)}`;
+  const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_SN}`;
+  const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const awayL = awayNick.toLowerCase(), homeL = homeNick.toLowerCase();
 
-  // Extract videoId from HTML — look for one contextually near both team names
-  function extractVideoId(html) {
-    if (!html) return null;
-    const hl = html.toLowerCase();
-    const away = awayNick.toLowerCase(), home = homeNick.toLowerCase();
-    const allIds = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-    for (const m of allIds) {
-      const ctx = hl.slice(Math.max(0, m.index - 400), m.index + 400);
-      if (ctx.includes(away) && ctx.includes(home)) return m[1];
+  // Title must be "NHL Highlights | <both teams> – <date>" and dated the game day (±1 day).
+  // If several qualify, the closest date wins (so older meetings of the same teams are skipped).
+  function pick(list) {
+    let best = null, bestD = 9;
+    for (const c of list) {
+      const tl = c.title.toLowerCase();
+      if (!tl.includes('nhl highlights') || !tl.includes(awayL) || !tl.includes(homeL)) continue;
+      const m = new RegExp('(' + MONTHS.join('|') + ')\\s+(\\d{1,2}),?\\s+(\\d{4})').exec(tl);
+      if (!m) continue;
+      const d = Math.abs((Date.UTC(+m[3], MONTHS.indexOf(m[1]), +m[2]) - gameDay) / 864e5);
+      if (d <= 1 && d < bestD) { best = c; bestD = d; }
     }
-    return allIds[0]?.[1] || null;
+    if (!best) {
+      const ex = list.slice(0, 3).map(c => '“' + c.title.slice(0, 55) + '”').join(', ');
+      throw new Error(list.length + ' videos, no match for ' + titleStr + (ex ? ' (e.g. ' + ex + ')' : ''));
+    }
+    return {id: best.id, url: `https://www.youtube.com/watch?v=${best.id}`, direct: true, label: best.title};
   }
 
-  // ── Race RSS + two scrape proxies all at once — first win takes it ──
-  const rssPromise = (async () => {
-    const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`;
-    const xml = await Promise.any([
-      fetch(rssUrl, {signal:AbortSignal.timeout(4000)}).then(r=>{if(!r.ok)throw 0;return r.text();}),
-      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
-        {signal:AbortSignal.timeout(4000)}).then(r=>r.json()).then(d=>d.contents||''),
-    ]);
-    const doc = new DOMParser().parseFromString(xml, 'application/xml');
-    for (const en of doc.querySelectorAll('entry')) {
-      const title = en.querySelector('title')?.textContent || '';
-      const diff  = (new Date(en.querySelector('published')?.textContent||'') - gameDate) / 86400000;
-      if (diff < 0 || diff > 2) continue;
-      const tl = title.toLowerCase();
-      if (!tl.includes(awayNick.toLowerCase()) || !tl.includes(homeNick.toLowerCase()) || !tl.includes('nhl highlight')) continue;
-      const link = en.querySelector('link')?.getAttribute('href') || '';
-      if (link.includes('youtube.com/watch')) return {url:link, direct:true, label:title};
-    }
-    throw new Error('no RSS match');
-  })();
+  const dbg = [];
+  const note = name => e => {
+    const why = e?.errors ? [...new Set(e.errors.map(x => x?.message || String(x)))].join(' / ') : (e?.message || String(e));
+    console.warn('[highlight]', name, 'failed:', why); dbg.push(name + ': ' + why); throw e;
+  };
 
-  const scrapeA = fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`,
-    {signal:AbortSignal.timeout(5000)})
-    .then(r=>r.json()).then(d=>{
-      const vid = extractVideoId(d.contents||'');
-      if (!vid) throw new Error('no id');
-      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
-    });
-
-  const scrapeB = fetch(`https://corsproxy.io/?url=${encodeURIComponent(searchUrl)}`,
-    {signal:AbortSignal.timeout(5000)})
-    .then(r=>{if(!r.ok)throw 0;return r.text();}).then(html=>{
-      const vid = extractVideoId(html);
-      if (!vid) throw new Error('no id');
-      return {url:`https://www.youtube.com/watch?v=${vid}`, direct:true, label:titleStr};
-    });
-
+  // Race: Sportsnet channel search (with date), channel search (teams only), channel feed (newest uploads)
+  const sources = [
+    ytGet(chanSearch(titleStr), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search')),
+    ytGet(chanSearch(`NHL Highlights ${awayNick} vs. ${homeNick}`), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search (teams)')),
+    ytGet(rssUrl, '<entry', true).then(x => pick(ytCandidatesFromRss(x))).catch(note('Sportsnet feed')),
+  ];
   try {
-    const hit = await Promise.any([rssPromise, scrapeA, scrapeB]);
-    return {...hit, id: (/[?&]v=([\w-]{11})/.exec(hit.url) || [])[1]};
-  } catch(_) {
-    return {url:searchUrl, direct:false, label:titleStr};
+    return await Promise.any(sources);
+  } catch (_) {
+    return {url: chanSearch(titleStr), direct: false, label: titleStr, debug: dbg};
   }
 }
 
