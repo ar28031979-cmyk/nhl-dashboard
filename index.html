@@ -254,6 +254,25 @@ body::after{
 .yt small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
 .yb{background:rgba(204,0,0,.1);border:1px solid rgba(204,0,0,.2);border-radius:4px;
   padding:2px 6px;font-size:9px;font-weight:700;color:var(--yt);letter-spacing:.5px;flex-shrink:0}
+
+/* ── HIGHLIGHT PREVIEW CARD ── */
+#ytBox{margin-top:14px}
+.yt-dbg{margin-top:8px;font-size:10px;color:var(--muted);line-height:1.5;word-break:break-word}
+.yt-dbg summary{cursor:pointer}
+#ytBox .yt-btn{margin-top:0}
+.yt-card{border:1.5px solid var(--yt-border);border-radius:11px;overflow:hidden;background:var(--yt-bg)}
+.yt-thumb{position:relative;aspect-ratio:16/9;background:#000;cursor:pointer}
+.yt-thumb img,.yt-thumb iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
+.yt-play{position:absolute;left:50%;top:50%;width:54px;height:38px;margin:-19px 0 0 -27px;
+  background:#cc0000;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.yt-thumb:hover .yt-play{transform:scale(1.1)}
+.yt-thumb.playing{cursor:default}
+.yt-meta{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.yt-title{font-size:12px;font-weight:600;line-height:1.35;color:var(--text)}
+.yt-open{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;
+  color:var(--yt);text-decoration:none}
+.yt-open:hover{text-decoration:underline}
 .sub-link{
   display:flex;align-items:center;justify-content:center;gap:6px;
   width:100%;padding:9px 14px;margin-top:7px;
@@ -413,16 +432,6 @@ body::after{
 .standings-pts{font-weight:700;color:var(--text)}
 .standings-table tr.playoff-line td{border-top:1px solid rgba(106,171,223,.3)}
 
-
-/* ── HIGHLIGHT PREVIEW ── */
-.yt-prev{margin-top:10px;border:1.5px solid var(--yt-border);border-radius:11px;overflow:hidden;background:var(--yt-bg)}
-.yt-thumb{position:relative;aspect-ratio:16/9;background:#000;cursor:pointer}
-.yt-thumb img,.yt-thumb iframe{position:absolute;inset:0;width:100%;height:100%;border:0;object-fit:cover}
-.yt-play{position:absolute;left:50%;top:50%;width:54px;height:38px;margin:-19px 0 0 -27px;background:#cc0000;
-  border-radius:10px;display:flex;align-items:center;justify-content:center;transition:transform .15s;box-shadow:0 2px 10px rgba(0,0,0,.4)}
-.yt-thumb:hover .yt-play{transform:scale(1.1)}
-.yt-thumb.playing{cursor:default}
-.yt-cap{padding:8px 12px;font-size:11px;font-weight:600;line-height:1.35;color:var(--text,#fff)}
 </style>
 </head>
 <body>
@@ -821,7 +830,8 @@ function step(m) { const el=document.getElementById('ls'); if(el) el.textContent
   try {
     // ESPN's v2 standings — same domain as all our other working calls
     const r = await fetch(
-      'https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=2026&type=0&level=3',
+      // Season year = year the season ends; NHL starts in October so Oct+ → next calendar year
+      `https://site.api.espn.com/apis/v2/sports/hockey/nhl/standings?season=${new Date().getMonth()>=9?new Date().getFullYear()+1:new Date().getFullYear()}&type=0&level=3`,
       { signal: AbortSignal.timeout(8000) }
     );
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -880,24 +890,35 @@ function step(m) { const el=document.getElementById('ls'); if(el) el.textContent
 })();
 
 // ── Live score updater ────────────────────────────────────────────
-function startLivePoller(espnId, myId, tok) {
+function startLivePoller(teamAbbr, tok) {
   if (livePoller) clearInterval(livePoller);
   livePoller = setInterval(async () => {
     if (tok !== loadToken) { clearInterval(livePoller); return; }
     try {
-      const r = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${espnId}/schedule`,
-        { signal: AbortSignal.timeout(6000) }
+      const scoreUrl = 'https://api-web.nhle.com/v1/score/now';
+      let d;
+      try {
+        const r = await fetch(scoreUrl, {signal: AbortSignal.timeout(6000)});
+        d = await r.json();
+      } catch(_) {
+        const r2 = await fetch(
+          `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(scoreUrl)}`,
+          {signal: AbortSignal.timeout(9000)}
+        );
+        d = await r2.json();
+      }
+      const liveGame = (d.games||[]).find(g =>
+        (g.homeTeam?.abbrev===teamAbbr || g.awayTeam?.abbrev===teamAbbr) &&
+        (g.gameState==='LIVE' || g.gameState==='CRIT')
       );
-      const d = await r.json();
-      const liveEv = (d.events||[]).find(ev => ev.competitions?.[0]?.status?.type?.state === 'in');
-      if (!liveEv) { clearInterval(livePoller); return; }
-      const comp   = liveEv.competitions[0];
-      const mine   = comp.competitors.find(c => String(c.team.id) === myId);
-      const opp    = comp.competitors.find(c => String(c.team.id) !== myId);
-      const myS    = parseScore(mine?.score) ?? '–';
-      const oppS   = parseScore(opp?.score)  ?? '–';
-      const detail = comp.status?.type?.detail || 'LIVE';
+      if (!liveGame) { clearInterval(livePoller); return; }
+      const isHome = liveGame.homeTeam?.abbrev === teamAbbr;
+      const myS    = (isHome ? liveGame.homeTeam?.score : liveGame.awayTeam?.score) ?? '–';
+      const oppS   = (isHome ? liveGame.awayTeam?.score : liveGame.homeTeam?.score) ?? '–';
+      const pd     = liveGame.periodDescriptor;
+      const pLabel = pd ? (pd.periodType==='OT'?'OT':pd.periodType==='SO'?'SO':`P${pd.number}`) : 'LIVE';
+      const clock  = liveGame.clock?.timeRemaining ? ` · ${liveGame.clock.timeRemaining}` : '';
+      const detail = pLabel + clock;
       const block  = document.getElementById('liveScoreBlock');
       if (!block) { clearInterval(livePoller); return; }
       block.querySelector('.live-my-score').textContent  = myS;
@@ -908,75 +929,50 @@ function startLivePoller(espnId, myId, tok) {
 }
 async function loadTeam(t, tok) {
   try {
-    await espnReady;                       // already resolved, instant
     if (tok !== loadToken) return;
-
-    // If init failed (rare), try building the map now
-    if (!espnIdMap[t.a]) {
-      step('Looking up team…');
-      const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=50',
-        {signal:AbortSignal.timeout(8000)});
-      const d = await r.json();
-      for (const {team:e} of d.sports[0].leagues[0].teams) {
-        const m = TEAMS.find(x => x.n.toLowerCase()===(e.name||'').toLowerCase());
-        if (m) { espnIdMap[m.a]=e.id; espnToNHL[e.abbreviation]=m.a; }
-      }
-    }
-    if (tok !== loadToken) return;
-
-    const eid = espnIdMap[t.a];
-    if (!eid) throw new Error(`ESPN has no record for ${t.a}. The team list may not have loaded — try again.`);
-
     step('Fetching schedule…');
 
-    const r = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${eid}/schedule`,
-      {signal:AbortSignal.timeout(8000)}
-    );
-    if (!r.ok) throw new Error(`ESPN returned HTTP ${r.status}`);
-    const data = await r.json();
+    // Use NHL's own public API.
+    // IMPORTANT: /now redirects (307) and Firefox drops CORS on the redirect → use
+    // explicit season ID to call the final URL directly with no redirect at all.
+    const _yr = new Date().getMonth() >= 9 ? new Date().getFullYear() : new Date().getFullYear() - 1;
+    const nhlUrl = `https://api-web.nhle.com/v1/club-schedule-season/${t.a}/${_yr}${_yr+1}`;
+    let data;
+    try {
+      data = await fetchJsonCORS(nhlUrl, j => Array.isArray(j?.games));
+    } catch (err) {
+      const why = err?.errors ? [...new Set(err.errors.map(x => x?.message || String(x)))].join(' / ') : (err?.message || '');
+      const local = location.protocol === 'file:'
+        ? ' You opened this page as a local file (file://), which many APIs block. Run a tiny local server instead: open a terminal in this folder, run  python -m http.server 8000  and visit  http://localhost:8000'
+        : '';
+      throw new Error('NHL schedule unavailable — please try again. [' + why + ']' + local);
+    }
     if (tok !== loadToken) return;
 
-    const past=[], future=[];
-    for (const ev of (data.events||[])) {
-      const comp  = ev.competitions?.[0];
-      const state = comp?.status?.type?.state||'';
-      if (comp?.status?.type?.completed)            past.push(ev);
-      else if (state==='pre' || state==='in') future.push(ev);
-    }
-    past.sort((a,b)   => new Date(a.date)-new Date(b.date));
-    future.sort((a,b) => new Date(a.date)-new Date(b.date));
+    const games = data.games || [];
+    const past    = games.filter(g => g.gameState==='OFF' || g.gameState==='FINAL');
+    const future  = games.filter(g => g.gameState==='FUT' || g.gameState==='PRE' ||
+                                      g.gameState==='LIVE' || g.gameState==='CRIT');
+    past.sort((a,b)   => new Date(a.startTimeUTC)-new Date(b.startTimeUTC));
+    future.sort((a,b) => new Date(a.startTimeUTC)-new Date(b.startTimeUTC));
 
-    renderPanel(t, eid, past.at(-1)||null, future[0]||null);
+    renderPanel(t, past.at(-1)||null, future[0]||null);
 
     // Start live score polling if next game is currently live
-    if (future[0]) {
-      const liveComp = future[0].competitions?.[0];
-      if (liveComp?.status?.type?.state === 'in') {
-        startLivePoller(eid, String(eid), tok);
-      }
+    const nextGame = future[0];
+    if (nextGame && (nextGame.gameState==='LIVE' || nextGame.gameState==='CRIT')) {
+      startLivePoller(t.a, tok);
     }
 
-    // YouTube lookup — non-blocking
-    // Pass team objects directly — no string parsing, guaranteed correct nicknames
+    // YouTube lookup — non-blocking, uses NHL abbreviations directly
     const lastGame = past.at(-1);
     if (lastGame) {
-      const comp    = lastGame.competitions?.[0];
-      const myComp  = comp?.competitors?.find(c => String(c.team.id) === String(eid));
-      const oppComp = comp?.competitors?.find(c => String(c.team.id) !== String(eid));
-      const oppNHL  = TEAMS.find(x => x.a === (espnToNHL[oppComp?.team?.abbreviation] || ''));
-      findHighlight(t, oppNHL || {n: oppComp?.team?.shortDisplayName || oppComp?.team?.abbreviation || '?'}, myComp?.homeAway === 'home', new Date(lastGame.date)).then(yt => {
-        if (tok !== loadToken) return;
-        const btn = document.getElementById('ytBtn');
-        if (!btn) return;
-        btn.href = yt.url;
-        btn.classList.remove('searching');
-        const lbl = (yt.label||'').length>52 ? yt.label.slice(0,52)+'…' : yt.label;
-        btn.innerHTML = yt.direct
-          ? `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">DIRECT LINK</span>`
-          : `<div class="yi">${YT}</div><div class="yt"><span>Watch on YouTube</span><small>${lbl}</small></div><span class="yb">SEARCH</span>`;
-        showPreview(btn, yt);
-      });
+      const isHome  = lastGame.homeTeam?.abbrev === t.a;
+      const oppAbbr = isHome ? lastGame.awayTeam?.abbrev : lastGame.homeTeam?.abbrev;
+      const oppTeam = TEAMS.find(x => x.a === oppAbbr) || {a: oppAbbr, n: oppAbbr};
+      findHighlight(t, oppTeam, isHome, new Date(lastGame.startTimeUTC))
+        .then(yt => { if (tok === loadToken) renderHighlight(yt); })
+        .catch(() => {});
     }
 
   } catch(e) {
@@ -995,15 +991,15 @@ async function loadTeam(t, tok) {
 }
 
 function retryTeam(abbr) {
-  espnIdMap = {};
   const t = TEAMS.find(x => x.a===abbr);
   if (t) selectTeam(t);
 }
 
 // ── YouTube highlight lookup ──────────────────────────────────────
-const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';
+const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';   // official NHL channel
+// OPTIONAL: your own CORS proxy URL (leave empty to use the public ones).
+const PROXY_URL = '';
 
-// Exact nicknames from official NHL team reference table
 const YT_NICK = {
   ANA:'Ducks',          BOS:'Bruins',         BUF:'Sabres',
   CGY:'Flames',         CAR:'Hurricanes',      CHI:'Blackhawks',
@@ -1017,6 +1013,37 @@ const YT_NICK = {
   UTA:'Mammoth',        VAN:'Canucks',         VGK:'Golden Knights',
   WSH:'Capitals',       WPG:'Jets',
 };
+
+const CORS_PROXIES = [
+  ...(PROXY_URL ? [u => `${PROXY_URL}/?url=${encodeURIComponent(u)}`] : []),
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.org/?${encodeURIComponent(u)}`,
+  u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
+  u => `https://yacdn.org/proxy/${u}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
+];
+
+// JSON fetch: direct first, then every proxy in parallel (first valid answer wins).
+async function fetchJsonCORS(url, validate = () => true) {
+  try {
+    const r = await fetch(url, {signal: AbortSignal.timeout(7000)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (validate(j)) return j;
+  } catch (e) { console.warn('[fetch] direct failed:', url, e?.message || e); }
+  const txt = await fetchViaProxies(url, t => { try { return validate(JSON.parse(t)); } catch { return false; } }, 12000);
+  return JSON.parse(txt);
+}
+
+// Fetch text through all proxies in parallel; first one whose body passes `validate` wins.
+function fetchViaProxies(url, validate, ms = 9000) {
+  return Promise.any(CORS_PROXIES.map(mk =>
+    fetch(mk(url), {signal: AbortSignal.timeout(ms)})
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(txt => { if (!validate(txt)) throw new Error('bad body'); return txt; })
+  ));
+}
 
 async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const myNick   = YT_NICK[myTeam.a]  || myTeam.n;
@@ -1083,30 +1110,48 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
     });
 
   try {
-    return await Promise.any([rssPromise, scrapeA, scrapeB]);
+    const hit = await Promise.any([rssPromise, scrapeA, scrapeB]);
+    return {...hit, id: (/[?&]v=([\w-]{11})/.exec(hit.url) || [])[1]};
   } catch(_) {
     return {url:searchUrl, direct:false, label:titleStr};
   }
 }
 
-// Thumbnail + inline player under the YouTube button (direct hits only)
-function showPreview(btn, yt) {
-  document.getElementById('ytPrev')?.remove();
-  const id = (/[?&]v=([\w-]{11})/.exec(yt.url || '') || [])[1];
-  if (!yt.direct || !id) return;
-  const box = document.createElement('div');
-  box.id = 'ytPrev'; box.className = 'yt-prev';
+// Render the result in the "Last Game" card: thumbnail + inline player + link
+function renderHighlight(yt) {
+  const box = document.getElementById('ytBox');
+  if (!box) return;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  if (!yt.direct) {
+    box.innerHTML = `
+      <a class="yt-btn" href="${esc(yt.url)}" target="_blank" rel="noopener">
+        <div class="yi">${YT}</div>
+        <div class="yt"><span>Search YouTube for highlights</span><small>Clip not found automatically</small></div>
+        <span class="yb">SEARCH</span>
+      </a>
+      <details class="yt-dbg"><summary>Why wasn't it found?</summary>
+        <div>${(yt.debug || []).map(esc).join('<br>') || 'No details'}</div>
+        <div>Page: ${esc(location.origin)} · Query: ${esc(yt.label)}</div>
+      </details>`;
+    return;
+  }
+  const canEmbed = location.protocol !== 'file:';   // YouTube refuses embeds from file:// pages
   box.innerHTML = `
-    <div class="yt-thumb" role="button" tabindex="0" aria-label="Play highlight">
-      <img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="Highlight preview">
-      <span class="yt-play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span>
+    <div class="yt-card">
+      <div class="yt-thumb" id="ytThumb" role="button" tabindex="0" aria-label="Play highlight">
+        <img src="https://i.ytimg.com/vi/${yt.id}/hqdefault.jpg" alt="Highlight preview"
+             onerror="this.src='https://i.ytimg.com/vi/${yt.id}/mqdefault.jpg'">
+        <span class="yt-play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span>
+      </div>
+      <div class="yt-meta">
+        <div class="yt-title">${esc(yt.label)}</div>
+        <a class="yt-open" href="${esc(yt.url)}" target="_blank" rel="noopener">${YT}<span>Open on YouTube</span></a>
+      </div>
     </div>`;
-  btn.insertAdjacentElement('afterend', box);
-  const thumb = box.querySelector('.yt-thumb');
+  const thumb = document.getElementById('ytThumb');
   const play = () => {
-    // YouTube refuses embeds on file:// pages → open the video in a new tab instead
-    if (location.protocol === 'file:') { window.open(yt.url, '_blank', 'noopener'); return; }
-    thumb.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0"
+    if (!canEmbed) { window.open(yt.url, '_blank', 'noopener'); return; }
+    thumb.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${yt.id}?autoplay=1&rel=0"
       title="NHL highlight" allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
       allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
     thumb.classList.add('playing');
@@ -1123,23 +1168,26 @@ const HOM = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke=
 const TVS = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7d8fa8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3l-4 4-4-4"/></svg>`;
 
 // ── Render ────────────────────────────────────────────────────────
-function renderPanel(t, espnId, last, next) {
-  const myId = String(espnId);
+// Receives NHL API game objects directly (api-web.nhle.com format)
+function renderPanel(t, last, next) {
 
   // Next game card
   const nextHTML = (() => {
     if (!next) return `<p class="no-game">No upcoming games scheduled.</p>`;
-    const comp   = next.competitions[0];
-    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
-    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
-    const isHome = mine?.homeAway==='home';
-    const oppT   = opp?.team||{};
-    const {date,time,localTime} = fmtDate(next.date);
-    const venue  = comp.venue?.fullName||'';
-    const isLive = comp.status?.type?.state==='in';
-    const detail = comp.status?.type?.detail||'LIVE';
-    const myS    = parseScore(mine?.score) ?? '–';
-    const oppS   = parseScore(opp?.score)  ?? '–';
+    const isHome  = next.homeTeam?.abbrev === t.a;
+    const opp     = isHome ? next.awayTeam : next.homeTeam;
+    const oppAbbr = opp?.abbrev || '?';
+    const oppTeam = TEAMS.find(x => x.a === oppAbbr);
+    const oppName = oppTeam ? `${oppTeam.c} ${oppTeam.n}` : oppAbbr;
+    const isLive  = next.gameState==='LIVE' || next.gameState==='CRIT';
+    const {date, localTime} = fmtDate(next.startTimeUTC);
+    const venue   = next.venue?.default || '';
+    const myS     = (isHome ? next.homeTeam?.score : next.awayTeam?.score) ?? '–';
+    const oppS    = (isHome ? next.awayTeam?.score : next.homeTeam?.score) ?? '–';
+    const pd      = next.periodDescriptor;
+    const pLabel  = pd ? (pd.periodType==='OT'?'OT':pd.periodType==='SO'?'SO':`P${pd.number}`) : 'LIVE';
+    const clock   = next.clock?.timeRemaining ? ` · ${next.clock.timeRemaining}` : '';
+    const detail  = pLabel + clock;
 
     const liveScoreHTML = isLive ? `
       <div class="live-score-block" id="liveScoreBlock">
@@ -1150,9 +1198,9 @@ function renderPanel(t, espnId, last, next) {
         </div>
         <div class="sc-sep"><span>–</span><div class="live-period">${detail}</div></div>
         <div class="sc-team">
-          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px">
+          <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'" style="width:28px;height:28px;object-fit:contain;margin-bottom:3px">
           <div class="sc-num live-opp-score">${oppS}</div>
-          <div class="ab">${oppT.abbreviation||'?'}</div>
+          <div class="ab">${oppAbbr}</div>
         </div>
       </div>` : '';
 
@@ -1160,8 +1208,8 @@ function renderPanel(t, espnId, last, next) {
       ${isLive?`<div class="live-badge"><span class="live-dot"></span>LIVE · ${detail}</div>`:''}
       ${liveScoreHTML}
       <div class="vs-row">
-        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
-        <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
+        <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'">
+        <div class="opp"><h3>VS ${oppAbbr}</h3><p>${oppName}</p></div>
         <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
       </div>
       <hr class="divider">
@@ -1173,17 +1221,18 @@ function renderPanel(t, espnId, last, next) {
   // Last game card
   const lastHTML = (() => {
     if (!last) return `<p class="no-game">No recent game data found.</p>`;
-    const comp   = last.competitions[0];
-    const mine   = comp.competitors.find(c=>String(c.team.id)===myId);
-    const opp    = comp.competitors.find(c=>String(c.team.id)!==myId);
-    const isHome = mine?.homeAway==='home';
-    const oppT   = opp?.team||{};
-    const myS    = parseScore(mine?.score);
-    const oppS   = parseScore(opp?.score);
-    const hasS   = myS!==null&&oppS!==null;
-    const won    = mine?.winner===true;
-    const {date} = fmtDate(last.date);
-    const status = comp.status?.type?.shortDetail||comp.status?.type?.description||'Final';
+    const isHome  = last.homeTeam?.abbrev === t.a;
+    const opp     = isHome ? last.awayTeam : last.homeTeam;
+    const oppAbbr = opp?.abbrev || '?';
+    const oppTeam = TEAMS.find(x => x.a === oppAbbr);
+    const oppName = oppTeam ? `${oppTeam.c} ${oppTeam.n}` : oppAbbr;
+    const myS     = isHome ? (last.homeTeam?.score ?? null) : (last.awayTeam?.score ?? null);
+    const oppS    = isHome ? (last.awayTeam?.score ?? null) : (last.homeTeam?.score ?? null);
+    const hasS    = myS !== null && oppS !== null;
+    const won     = hasS && myS > oppS;
+    const {date}  = fmtDate(last.startTimeUTC);
+    const lastPd  = last.gameOutcome?.lastPeriodType;
+    const status  = lastPd==='OT' ? 'Final/OT' : lastPd==='SO' ? 'Final/SO' : 'Final';
 
     const scoreHTML = hasS ? `
       <div class="score-block ${won?'wb':'lb'}">
@@ -1194,30 +1243,31 @@ function renderPanel(t, espnId, last, next) {
         </div>
         <div class="sc-sep"><span>–</span><div class="sc-per">${status}</div></div>
         <div class="sc-team">
-          <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
+          <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'">
           <div class="sc-num">${oppS}</div>
-          <div class="ab">${oppT.abbreviation||'?'}</div>
+          <div class="ab">${oppAbbr}</div>
         </div>
       </div>
       <div class="chip ${won?'w':'l'}">${won?'✓ WIN':'✗ LOSS'}</div>` : '';
 
     return `
       <div class="vs-row">
-        <img src="${logoFor(oppT.abbreviation||'')}" alt="${oppT.abbreviation||''}" onerror="this.src='${espnLogo(oppT.abbreviation||'')}'">
-        <div class="opp"><h3>VS ${oppT.abbreviation||'?'}</h3><p>${oppT.displayName||''}</p></div>
+        <img src="${nhlLogo(oppAbbr)}" alt="${oppAbbr}" onerror="this.src='${espnLogo(oppAbbr)}'">
+        <div class="opp"><h3>VS ${oppAbbr}</h3><p>${oppName}</p></div>
         <span class="ha-tag ${isHome?'ha-home':'ha-away'}">${isHome?'HOME':'AWAY'}</span>
       </div>
       ${scoreHTML}
       <hr class="divider">
       <div class="info-row">${CAL}<strong>${date}</strong></div>
-      <a id="ytBtn" href="#" target="_blank" rel="noopener" class="yt-btn searching"
-         onclick="if(this.href==='#'||this.href.endsWith('#')){event.preventDefault()}">
-        <div class="yi">${YT}</div>
-        <div class="yt"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div>
-        <span class="yb">LOADING</span>
-      </a>
-      <a href="https://www.espn.com/nhl/game/_/gameId/${last.id}" target="_blank" rel="noopener" class="sub-link">
-        ${TVS} View full recap on ESPN
+      <div id="ytBox">
+        <div class="yt-btn searching">
+          <div class="yi">${YT}</div>
+          <div class="yt"><span>Watch on YouTube</span><small>Finding highlight clip…</small></div>
+          <span class="yb">LOADING</span>
+        </div>
+      </div>
+      <a href="https://www.nhl.com/gamecenter/${last.id}" target="_blank" rel="noopener" class="sub-link">
+        ${TVS} View full recap on NHL.com
       </a>`;
   })();
 
