@@ -1127,16 +1127,18 @@ function scoreCandidate(c, ctx) {
 
   // Date check 1 — NHL puts the game date in the title
   const dateInTitle = ctx.dateVariants.some(d => tl.includes(d));
+  const nearDate = !dateInTitle && (ctx.nearVariants || []).some(d => tl.includes(d));
   const otherDate = /(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}|\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(tl);
   if (dateInTitle) score += 6;
+  else if (nearDate) score += 3;
   else if (otherDate) return -1;                    // a different day → an older/newer meeting
 
   // Date check 2 — publish time
   const age = Date.now() - ctx.gameMs;
   if (c.pubMs) {
     const d = (c.pubMs - ctx.gameMs) / 864e5;
-    if (d < -0.5 || d > 4) { if (!dateInTitle) return -1; } else score += 2;
-  } else if (c.ago && !dateInTitle) {
+    if (d < -0.5 || d > 4) { if (!dateInTitle && !nearDate) return -1; } else score += 2;
+  } else if (c.ago && !dateInTitle && !nearDate) {
     const a = agoToMs(c.ago);
     if (a !== null) {
       // clip is published after the game, so its age is slightly LESS than the game's age
@@ -1159,20 +1161,30 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const awayNick = iAmHome ? oppNick : myNick;
   const homeNick = iAmHome ? myNick  : oppNick;
 
-  // ET game-night date ("October 5, 2026" + numeric variants)
+  // ET game-night date ("October 5, 2026" + numeric variants); also ±1 day (clips are sometimes dated the next day)
   const ET = {timeZone:'America/New_York'};
-  const mo = new Intl.DateTimeFormat('en-US',{...ET, month:'long'}).format(gameDate).toLowerCase();
-  const dy = +new Intl.DateTimeFormat('en-US',{...ET, day:'numeric'}).format(gameDate);
-  const yr = +new Intl.DateTimeFormat('en-US',{...ET, year:'numeric'}).format(gameDate);
-  const mn = +new Intl.DateTimeFormat('en-US',{...ET, month:'numeric'}).format(gameDate);
-  const dateVariants = [`${mo} ${dy}, ${yr}`, `${mo} ${dy} ${yr}`, `${mn}/${dy}/${yr}`, `${mn}/${dy}/${String(yr).slice(2)}`];
-  const dateStr  = `${mo[0].toUpperCase()+mo.slice(1)} ${dy}, ${yr}`;
+  const variantsFor = off => {
+    const d = new Date(gameDate.getTime() + off * 864e5);
+    const mo = new Intl.DateTimeFormat('en-US',{...ET, month:'long'}).format(d).toLowerCase();
+    const dy = +new Intl.DateTimeFormat('en-US',{...ET, day:'numeric'}).format(d);
+    const yr = +new Intl.DateTimeFormat('en-US',{...ET, year:'numeric'}).format(d);
+    const mn = +new Intl.DateTimeFormat('en-US',{...ET, month:'numeric'}).format(d);
+    const ab = mo.slice(0,3);
+    return {
+      pretty: `${mo[0].toUpperCase()+mo.slice(1)} ${dy}, ${yr}`,
+      list: [`${mo} ${dy}, ${yr}`, `${mo} ${dy} ${yr}`, `${ab} ${dy}, ${yr}`, `${ab}. ${dy}, ${yr}`,
+             `${mn}/${dy}/${yr}`, `${mn}/${dy}/${String(yr).slice(2)}`],
+    };
+  };
+  const dateVariants = variantsFor(0).list;
+  const nearVariants = [...variantsFor(-1).list, ...variantsFor(1).list];
+  const dateStr = variantsFor(0).pretty;
 
   // Sportsnet's title format: "NHL Highlights | Predators vs. Maple Leafs - October 6, 2026"
   const titleStr  = `NHL Highlights | ${awayNick} vs. ${homeNick} - ${dateStr}`;
   const searchQ   = titleStr;
   const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ)}`;
-  const ctx = {awayNick, homeNick, gameMs: gameDate.getTime(), dateVariants};
+  const ctx = {awayNick, homeNick, gameMs: gameDate.getTime(), dateVariants, nearVariants};
   const dbg = [];
   const warn = name => e => {
     const why = e?.errors ? [...new Set(e.errors.map(x => x?.message || String(x)))].join(' / ') : (e?.message || String(e));
@@ -1181,7 +1193,10 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const pick = list => {
     let best = null, bs = 0;
     for (const c of list) { const sc = scoreCandidate(c, ctx); if (sc > bs) { bs = sc; best = c; } }
-    if (!best) throw new Error('no matching video among ' + list.length + ' results');
+    if (!best) {
+      const ex = list.filter(c => c.title).slice(0, 3).map(c => '“' + c.title.slice(0, 60) + '”').join(', ');
+      throw new Error(list.length + ' results, none matched' + (ex ? ' e.g. ' + ex : ''));
+    }
     console.info('[highlight] matched:', best.title, best.id);
     return {id: best.id, url: `https://www.youtube.com/watch?v=${best.id}`, direct: true, label: best.title};
   };
