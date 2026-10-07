@@ -257,6 +257,8 @@ body::after{
 
 /* ── HIGHLIGHT PREVIEW CARD ── */
 #ytBox{margin-top:14px}
+.yt-dbg{margin-top:8px;font-size:10px;color:var(--muted);line-height:1.5;word-break:break-word}
+.yt-dbg summary{cursor:pointer}
 #ytBox .yt-btn{margin-top:0}
 .yt-card{border:1.5px solid var(--yt-border);border-radius:11px;overflow:hidden;background:var(--yt-bg)}
 .yt-thumb{position:relative;aspect-ratio:16/9;background:#000;cursor:pointer}
@@ -938,11 +940,12 @@ async function loadTeam(t, tok) {
     let data;
     try {
       data = await fetchJsonCORS(nhlUrl, j => Array.isArray(j?.games));
-    } catch (_) {
+    } catch (err) {
+      const why = err?.errors ? [...new Set(err.errors.map(x => x?.message || String(x)))].join(' / ') : (err?.message || '');
       const local = location.protocol === 'file:'
         ? ' You opened this page as a local file (file://), which many APIs block. Run a tiny local server instead: open a terminal in this folder, run  python -m http.server 8000  and visit  http://localhost:8000'
         : '';
-      throw new Error('NHL schedule unavailable — please try again.' + local);
+      throw new Error('NHL schedule unavailable — please try again. [' + why + ']' + local);
     }
     if (tok !== loadToken) return;
 
@@ -1003,10 +1006,14 @@ function retryTeam(abbr) {
 // NEW: every source goes through CORS proxies, results are scored/validated by
 //  team names + date, and the UI shows a thumbnail + inline player.
 const YT_CH = 'UCqFMzb-4AUf6WAIbl132QKA';   // official NHL channel
+const YT_SN = 'UCVhibwHk4WKw4leUt6JfRLg';   // Sportsnet channel (posts "NHL Highlights | A vs. B - Date")
 // OPTIONAL but the most reliable option: a free YouTube Data API v3 key
 // (console.cloud.google.com → enable "YouTube Data API v3" → Create API key).
 // The API allows direct browser calls (no proxy), 100 searches/day free.
 const YT_API_KEY = '';
+// OPTIONAL (recommended): your own Cloudflare Worker proxy (see worker.js), e.g.
+// 'https://nhl-proxy.YOURNAME.workers.dev'  — replaces the unreliable public proxies.
+const PROXY_URL = '';
 
 const YT_NICK = {
   ANA:'Ducks',          BOS:'Bruins',         BUF:'Sabres',
@@ -1023,6 +1030,7 @@ const YT_NICK = {
 };
 
 const CORS_PROXIES = [
+  ...(PROXY_URL ? [u => `${PROXY_URL}/?url=${encodeURIComponent(u)}`] : []),
   u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   u => `https://corsproxy.org/?${encodeURIComponent(u)}`,
   u => `https://api.cors.lol/?url=${encodeURIComponent(u)}`,
@@ -1050,6 +1058,17 @@ function fetchViaProxies(url, validate, ms = 9000) {
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
       .then(txt => { if (!validate(txt)) throw new Error('bad body'); return txt; })
   ));
+}
+
+async function fetchTextCORS(url, validate, ms = 9000) {
+  try {
+    const r = await fetch(url, {signal: AbortSignal.timeout(6000)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const t = await r.text();
+    if (validate(t)) return t;
+    throw new Error('bad body');
+  } catch (_) { /* direct blocked (CORS) → proxies */ }
+  return fetchViaProxies(url, validate, ms);
 }
 
 // ── parsers → [{id,title,channel,pubMs?,ago?}] ──
@@ -1154,7 +1173,10 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const searchQ   = titleStr;
   const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQ)}`;
   const ctx = {awayNick, homeNick, gameMs: gameDate.getTime(), dateVariants};
-  const warn = name => e => { console.warn('[highlight]', name, 'failed:', e?.message || e); throw e; };
+  const dbg = [];
+  const warn = name => e => {
+    const why = e?.errors ? [...new Set(e.errors.map(x => x?.message || String(x)))].join(' / ') : (e?.message || String(e));
+    console.warn('[highlight]', name, 'failed:', why); dbg.push(name + ': ' + why); throw e; };
 
   const pick = list => {
     let best = null, bs = 0;
@@ -1198,11 +1220,23 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
     .then(html => pick(parseYtSearchHtml(html)))
     .catch(warn('search page')));
 
-  // Source C — NHL channel RSS via proxies (only the newest ~15 uploads)
-  sources.push(fetchViaProxies(
-      `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`, t => t.includes('<entry'), 8000)
-    .then(xml => pick(parseYtRss(xml)))
-    .catch(warn('NHL RSS')));
+  // Source C — channel feeds: Sportsnet (all uploads + long-form only) and NHL.
+  // Only the newest ~15 videos per feed, so this catches games from the last day or so.
+  const feedUrls = [
+    `https://www.youtube.com/feeds/videos.xml?playlist_id=UULF${YT_SN.slice(2)}`,
+    `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_SN}`,
+    `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_CH}`,
+  ];
+  sources.push(
+    Promise.allSettled(feedUrls.map(u => fetchTextCORS(u, t => t.includes('<entry'), 8000)
+        .then(xml => parseYtRss(xml).map(c => ({...c, channel: u.includes(YT_CH) ? 'NHL' : 'Sportsnet'})))))
+      .then(rs => {
+        const all = rs.filter(r => r.status === 'fulfilled').flatMap(r => r.value);
+        if (!all.length) throw new Error('feeds unavailable (' +
+          rs.map(r => r.reason?.errors ? [...new Set(r.reason.errors.map(x => x.message))].join('/') : r.reason?.message).join(' | ') + ')');
+        return pick(all);
+      })
+      .catch(warn('channel feeds')));
 
   // Source D — Invidious search API
   sources.push(Promise.any(
@@ -1218,7 +1252,7 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
     return await Promise.any(sources);
   } catch (_) {
     console.warn('[highlight] all sources failed → search-link fallback');
-    return {url: searchUrl, direct: false, label: titleStr};
+    return {url: searchUrl, direct: false, label: titleStr, debug: dbg};
   }
 }
 
@@ -1233,7 +1267,11 @@ function renderHighlight(yt) {
         <div class="yi">${YT}</div>
         <div class="yt"><span>Search YouTube for highlights</span><small>Clip not found automatically</small></div>
         <span class="yb">SEARCH</span>
-      </a>`;
+      </a>
+      <details class="yt-dbg"><summary>Why wasn't it found?</summary>
+        <div>${(yt.debug || []).map(esc).join('<br>') || 'No details'}</div>
+        <div>Page: ${esc(location.origin)} · Query: ${esc(yt.label)}</div>
+      </details>`;
     return;
   }
   const canEmbed = location.protocol !== 'file:';   // YouTube refuses embeds from file:// pages
