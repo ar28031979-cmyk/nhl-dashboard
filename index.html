@@ -1051,6 +1051,36 @@ async function fetchJsonCORS(url, validate = () => true) {
   return JSON.parse(txt);
 }
 
+// Fetch text through CORS proxies. Gentle on public proxies (they rate-limit):
+//  • results are cached 5 min per URL (shared by all team clicks)
+//  • proxies are tried in two tiers; tier 2 only if tier 1 fails
+const _proxyCache = new Map();
+function fetchViaProxies(url, validate, ms = 9000) {
+  const hit = _proxyCache.get(url);
+  if (hit && Date.now() - hit.t < 300000) return hit.p;
+  const one = mk => fetch(mk(url), {signal: AbortSignal.timeout(ms)})
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(txt => { if (!validate(txt)) throw new Error('bad body'); return txt; });
+  const tier1 = CORS_PROXIES.slice(0, 2), tier2 = CORS_PROXIES.slice(2);
+  const p = Promise.any(tier1.map(one)).catch(e1 =>
+    Promise.any(tier2.map(one)).catch(e2 => { throw new AggregateError([...(e1.errors||[]), ...(e2.errors||[])], 'all proxies failed'); }));
+  _proxyCache.set(url, {t: Date.now(), p});
+  p.catch(() => _proxyCache.delete(url));
+  return p;
+}
+
+// JSON fetch: direct first, then every proxy in parallel (first valid answer wins).
+async function fetchJsonCORS(url, validate = () => true) {
+  try {
+    const r = await fetch(url, {signal: AbortSignal.timeout(7000)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    if (validate(j)) return j;
+  } catch (e) { console.warn('[fetch] direct failed:', url, e?.message || e); }
+  const txt = await fetchViaProxies(url, t => { try { return validate(JSON.parse(t)); } catch { return false; } }, 12000);
+  return JSON.parse(txt);
+}
+
 // Fetch text through all proxies in parallel; first one whose body passes `validate` wins.
 function fetchViaProxies(url, validate, ms = 9000) {
   return Promise.any(CORS_PROXIES.map(mk =>
