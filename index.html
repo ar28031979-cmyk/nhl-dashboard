@@ -997,6 +997,9 @@ function retryTeam(abbr) {
 
 // ── YouTube highlight lookup ──────────────────────────────────────
 const YT_SN = 'UCVhibwHk4WKw4leUt6JfRLg';   // SPORTSNET channel (youtube.com/@sportsnet)
+// OPTIONAL but the most reliable: a free YouTube Data API v3 key. With it the page asks Google directly
+// (no proxies). Free quota ≈ 100 lookups/day. Paste it between the quotes, e.g. 'AIza...'
+const YT_API_KEY = 'AIzaSyB1jlSX3Jy_NHP_C4J5Y-N4x4jWpoqYZms';
 // OPTIONAL: your own CORS proxy URL (leave empty to use the public ones).
 const PROXY_URL = '';
 
@@ -1155,8 +1158,26 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
     console.warn('[highlight]', name, 'failed:', why); dbg.push(name + ': ' + why); throw e;
   };
 
+  const unesc = t => { const d = document.createElement('textarea'); d.innerHTML = t; return d.value; };
+  // Official API: search ONLY inside the Sportsnet channel, newest first, from a day before the game
+  const apiSource = () => {
+    const after = new Date(gameDate.getTime() - 24 * 36e5).toISOString();
+    const u = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date&maxResults=25'
+      + `&channelId=${YT_SN}&publishedAfter=${encodeURIComponent(after)}`
+      + `&q=${encodeURIComponent(awayNick + ' vs. ' + homeNick)}&key=${encodeURIComponent(YT_API_KEY)}`;
+    return fetch(u, {signal: AbortSignal.timeout(10000)})
+      .then(async r => {
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error('YouTube API ' + r.status + (j.error?.message ? ': ' + j.error.message.slice(0, 120) : ''));
+        return j;
+      })
+      .then(j => pick((j.items || []).map(i => ({id: i.id?.videoId, title: unesc(i.snippet?.title || '')}))))
+      .catch(note('YouTube API'));
+  };
+
   // Race: Sportsnet channel search (with date), channel search (teams only), channel feed (newest uploads)
   const sources = [
+    ...(YT_API_KEY ? [apiSource()] : []),
     ytGet(chanSearch(titleStr), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search')),
     ytGet(chanSearch(`NHL Highlights ${awayNick} vs. ${homeNick}`), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search (teams)')),
     ytGet(rssUrl, '<entry', true).then(x => pick(ytCandidatesFromRss(x))).catch(note('Sportsnet feed')),
