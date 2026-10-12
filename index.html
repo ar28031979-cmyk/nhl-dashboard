@@ -999,7 +999,7 @@ function retryTeam(abbr) {
 const YT_SN = 'UCVhibwHk4WKw4leUt6JfRLg';   // SPORTSNET channel (youtube.com/@sportsnet)
 // OPTIONAL but the most reliable: a free YouTube Data API v3 key. With it the page asks Google directly
 // (no proxies). Free quota ≈ 100 lookups/day. Paste it between the quotes, e.g. 'AIza...'
-const YT_API_KEY = 'AIzaSyB1jlSX3Jy_NHP_C4J5Y-N4x4jWpoqYZms';
+const YT_API_KEY = '';
 // OPTIONAL: your own CORS proxy URL (leave empty to use the public ones).
 const PROXY_URL = '';
 
@@ -1029,14 +1029,21 @@ const CORS_PROXIES = [
 
 // JSON fetch: direct first, then every proxy in parallel (first valid answer wins).
 async function fetchJsonCORS(url, validate = () => true) {
+  let directErr = null;
   try {
     const r = await fetch(url, {signal: AbortSignal.timeout(7000)});
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     if (validate(j)) return j;
-  } catch (e) { console.warn('[fetch] direct failed:', url, e?.message || e); }
-  const txt = await fetchViaProxies(url, t => { try { return validate(JSON.parse(t)); } catch { return false; } }, 12000);
-  return JSON.parse(txt);
+    throw new Error('unexpected response');
+  } catch (e) { directErr = e; console.warn('[fetch] direct failed:', url, e?.message || e); }
+  try {
+    const txt = await fetchViaProxies(url, t => { try { return validate(JSON.parse(t)); } catch { return false; } }, 12000);
+    return JSON.parse(txt);
+  } catch (pe) {
+    // include the direct attempt in the error shown on screen
+    throw new AggregateError([new Error('direct: ' + (directErr?.message || directErr)), ...(pe.errors || [pe])], 'all failed');
+  }
 }
 
 // Fetch text through all proxies in parallel; first one whose body passes `validate` wins.
