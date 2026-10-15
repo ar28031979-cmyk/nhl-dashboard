@@ -951,13 +951,16 @@ async function fetchEspnSchedule(t) {
   await espnReady;
   if (!espnIdMap[t.a]) {
     _espnTeamsRetry = _espnTeamsRetry || loadEspnTeams().catch(e => { _espnTeamsRetry = null; throw e; });
-    await _espnTeamsRetry;
+    try { await _espnTeamsRetry; } catch (e) { throw new Error('team list: ' + (e?.message || e)); }
   }
   if (!espnIdMap[t.a]) throw new Error('ESPN has no id for ' + t.a + ' (' + Object.keys(espnIdMap).length + ' teams matched)');
-  const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${espnIdMap[t.a]}/schedule`,
-                        {signal: AbortSignal.timeout(9000)});
-  if (!r.ok) throw new Error('ESPN HTTP ' + r.status);
-  const d = await r.json();
+  let d;
+  try {
+    const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams/${espnIdMap[t.a]}/schedule`,
+                          {signal: AbortSignal.timeout(9000)});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    d = await r.json();
+  } catch (e) { throw new Error('schedule request: ' + (e?.message || e)); }
   const games = [];
   for (const ev of (d.events || [])) {
     const comp = ev.competitions?.[0];
