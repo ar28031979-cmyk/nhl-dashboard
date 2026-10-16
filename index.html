@@ -484,6 +484,21 @@ body::after{
 </div>
 
 <script>
+// ═══════════════ SETTINGS — the only two lines you need to edit ═══════════════
+const PROXY_URL  = 'https://wild-cherry-1e2d.ar28031979.workers.dev';   // your Cloudflare Worker address, e.g. 'https://nhl-proxy.yourname.workers.dev'  (no slash at the end)
+const YT_API_KEY = 'AIzaSyB1jlSX3Jy_NHP_C4J5Y-N4x4jWpoqYZms';   // optional: YouTube Data API key (backup for finding the Sportsnet highlight)
+// ═══════════════════════════════════════════════════════════════════════════════
+// ESPN / NHL / YouTube no longer allow direct browser requests. When PROXY_URL is set, every request to
+// them is sent through your Worker automatically.
+{
+  const _fetch = window.fetch.bind(window);
+  window.fetch = (input, init) => {
+    const u = typeof input === 'string' ? input : (input && input.url) || '';
+    if (PROXY_URL && /^https:\/\/(site\.api\.espn\.com|api-web\.nhle\.com|www\.nhl\.com|www\.youtube\.com)\//.test(u))
+      return _fetch(`${PROXY_URL}/?url=${encodeURIComponent(u)}`, init);
+    return _fetch(input, init);
+  };
+}
 /* ══════════════════════════════════════════════════════════════════
    DATA: ESPN public API — same source powering Google Sports panels
    Direct fetch · CORS-open · No proxy · ~200ms · Full season data
@@ -1001,19 +1016,22 @@ async function loadTeam(t, tok) {
     const _yr = new Date().getMonth() >= 9 ? new Date().getFullYear() : new Date().getFullYear() - 1;
     const nhlUrl = `https://api-web.nhle.com/v1/club-schedule-season/${t.a}/${_yr}${_yr+1}`;
     let data;
-    try {
-      data = await fetchEspnSchedule(t);
-    } catch (espnErr) {
-      console.warn('[schedule] ESPN failed, trying NHL API:', espnErr?.message || espnErr);
-      try {
-        data = await fetchJsonCORS(nhlUrl, j => Array.isArray(j?.games));
-      } catch (err) {
-      const why = err?.errors ? [...new Set(err.errors.map(x => x?.message || String(x)))].join(' / ') : (err?.message || '');
-      const local = location.protocol === 'file:'
-        ? ' You opened this page as a local file (file://), which many APIs block. Run a tiny local server instead: open a terminal in this folder, run  python -m http.server 8000  and visit  http://localhost:8000'
-        : '';
-      throw new Error('Schedule unavailable. ESPN: ' + (espnErr?.message || espnErr) + ' | NHL: ' + why + local);
+    const why = e => e?.errors ? [...new Set(e.errors.map(x => x?.message || String(x)))].join(' / ') : (e?.message || String(e));
+    const sources = [
+      ['NHL',  () => fetchJsonCORS(nhlUrl, j => Array.isArray(j?.games))],
+      ['ESPN', () => fetchEspnSchedule(t)],
+    ];
+    if (!PROXY_URL) sources.reverse();            // without a Worker, ESPN has the better chance
+    const errs = [];
+    for (const [name, load] of sources) {
+      try { data = await load(); break; }
+      catch (e) { errs.push(name + ': ' + why(e)); console.warn('[schedule]', name, 'failed:', why(e)); }
     }
+    if (!data) {
+      const hint = !PROXY_URL
+        ? ' — ESPN and the NHL block direct browser requests. Set PROXY_URL at the top of the script (Cloudflare Worker).'
+        : ' — check that PROXY_URL is correct and the Worker is deployed.';
+      throw new Error('Schedule unavailable. ' + errs.join(' | ') + hint);
     }
     if (tok !== loadToken) return;
 
@@ -1065,12 +1083,6 @@ function retryTeam(abbr) {
 
 // ── YouTube highlight lookup ──────────────────────────────────────
 const YT_SN = 'UCVhibwHk4WKw4leUt6JfRLg';   // SPORTSNET channel (youtube.com/@sportsnet)
-// OPTIONAL but the most reliable: a free YouTube Data API v3 key. With it the page asks Google directly
-// (no proxies). Free quota ≈ 100 lookups/day. Paste it between the quotes, e.g. 'AIza...'
-const YT_API_KEY = 'AIzaSyB1jlSX3Jy_NHP_C4J5Y-N4x4jWpoqYZms';
-// RECOMMENDED: your own free Cloudflare Worker proxy URL, e.g. 'https://nhl-proxy.YOURNAME.workers.dev' (no trailing slash).
-// Leave empty to rely on direct requests + public proxies (unreliable).
-const PROXY_URL = '';
 
 const YT_NICK = {
   ANA:'Ducks',          BOS:'Bruins',         BUF:'Sabres',
