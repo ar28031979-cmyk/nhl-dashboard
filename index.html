@@ -1231,6 +1231,7 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
 
   const titleStr = `NHL Highlights | ${awayNick} vs. ${homeNick} – ${dateStr}`;
   const chanSearch = q => `https://www.youtube.com/channel/${YT_SN}/search?query=${encodeURIComponent(q)}`;
+  const globalSearch = q => `https://www.youtube.com/results?search_query=${encodeURIComponent(q)}&sp=EgIQAQ%253D%253D&hl=en`;
   const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${YT_SN}`;
   const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
   const awayL = awayNick.toLowerCase(), homeL = homeNick.toLowerCase();
@@ -1254,6 +1255,8 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
     return {id: best.id, url: `https://www.youtube.com/watch?v=${best.id}`, direct: true, label: best.title};
   }
 
+  const cacheKey = `hl2:${awayNick}|${homeNick}|${dateStr}`;
+  try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c?.id && c.direct) return c; } catch (_) {}
   const dbg = [];
   const note = name => e => {
     const why = e?.errors ? [...new Set(e.errors.map(x => x?.message || String(x)))].join(' / ') : (e?.message || String(e));
@@ -1263,9 +1266,10 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
   const unesc = t => { const d = document.createElement('textarea'); d.innerHTML = t; return d.value; };
   // Official API: search ONLY inside the Sportsnet channel, newest first, from a day before the game
   const apiSource = () => {
-    const after = new Date(gameDate.getTime() - 24 * 36e5).toISOString();
+    const after  = new Date(gameDate.getTime() - 24 * 36e5).toISOString();
+    const before = new Date(gameDate.getTime() + 5 * 864e5).toISOString();
     const u = 'https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&order=date&maxResults=25'
-      + `&channelId=${YT_SN}&publishedAfter=${encodeURIComponent(after)}`
+      + `&channelId=${YT_SN}&publishedAfter=${encodeURIComponent(after)}&publishedBefore=${encodeURIComponent(before)}`
       + `&q=${encodeURIComponent(awayNick + ' vs. ' + homeNick)}&key=${encodeURIComponent(YT_API_KEY)}`;
     return fetch(u, {signal: AbortSignal.timeout(10000)})
       .then(async r => {
@@ -1282,10 +1286,16 @@ async function findHighlight(myTeam, oppTeam, iAmHome, gameDate) {
     ...(YT_API_KEY ? [apiSource()] : []),
     ytGet(chanSearch(titleStr), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search')),
     ytGet(chanSearch(`NHL Highlights ${awayNick} vs. ${homeNick}`), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search (teams)')),
+    ytGet(chanSearch(`${awayNick} ${homeNick} ${monthName} ${day}`), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('Sportsnet search (short)')),
+    // whole-YouTube search (videos only) – finds the clip of any age even if the channel search page fails
+    ytGet(globalSearch(titleStr), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('YouTube search')),
+    ytGet(globalSearch(`NHL Highlights ${awayNick} vs. ${homeNick} ${dateStr}`), 'ytInitialData').then(h => pick(ytCandidatesFromHtml(h))).catch(note('YouTube search (plain)')),
     ytGet(rssUrl, '<entry', true).then(x => pick(ytCandidatesFromRss(x))).catch(note('Sportsnet feed')),
   ];
   try {
-    return await Promise.any(sources);
+    const hit = await Promise.any(sources);
+    try { localStorage.setItem(cacheKey, JSON.stringify(hit)); } catch (_) {}
+    return hit;
   } catch (_) {
     return {url: chanSearch(titleStr), direct: false, label: titleStr, debug: dbg};
   }
